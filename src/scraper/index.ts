@@ -43,6 +43,28 @@ const navigeToPage = async (page: Page, link: string) => {
     await page.goto(link, { waitUntil: "networkidle2" });
 }
 
+const waitForSelectors = async (page: Page, selectors: string | string[]) => {
+    // Normalize selectors to be an array
+    const selectorsArray = Array.isArray(selectors) ? selectors : [selectors];
+    console.log('---------------------');
+    console.log(`Selectors are : ${selectorsArray}`);
+
+    // Wait for all selectors
+    try {
+        await Promise.all(
+            selectorsArray.map(async (selector) => {
+                await page.waitForSelector(selector, { timeout: 60000 });
+                console.log(`Selector "${selector}" is now available.`);
+            })
+        );
+
+        return " ";
+    } catch (err) {
+        console.log(`Error waiting for selectors: ${err}`);
+        return null;
+    }
+}
+
 const waitForSelectorsAndEvaluatePage = async (page: Page, selectors: string | string[], evaluateFn: (page: Page) => Promise<any>) => {
     // Normalize selectors to be an array
     const selectorsArray = Array.isArray(selectors) ? selectors : [selectors];
@@ -91,7 +113,7 @@ const scrapeCases = async (): Promise<void> => {
         await navigeToPage(page, "https://www.kenyalaw.org/caselaw");
 
         const evaluateInitialRunStartPage = async (page: Page) => {
-            const links = await page.evaluate(() => {
+            const courtTypeLinks = await page.evaluate(() => {
                 const linksAndCourtTypesArray: {
                     link: string,
                     courtType: string
@@ -116,32 +138,32 @@ const scrapeCases = async (): Promise<void> => {
                 return linksAndCourtTypesArray;
             });
 
-            return links;
+            return courtTypeLinks;
         }
 
-        const links = await waitForSelectorsAndEvaluatePage(page, "ul > li > a", evaluateInitialRunStartPage);
+        const courtTypeLinks = await waitForSelectorsAndEvaluatePage(page, "ul > li > a", evaluateInitialRunStartPage);
 
-        if (!links) {
+        if (!courtTypeLinks) {
             console.log(`Failed to return links`);
             return;
         }
 
         let initialCourtCasesLinks: string[] = [];
 
-        for (const link of links) {
+        for (const courtTypeLink of courtTypeLinks) {
             const courtTypePage = await createNewPage(browser);
 
             if (!courtTypePage) {
                 return;
             }
 
-            await navigeToPage(courtTypePage, link.link);
+            await navigeToPage(courtTypePage, courtTypeLink.link);
 
             const evaluateCourtTypePage = async (page: Page) => {
                 const currentPageIndexAndLinks = await page.evaluate(() => {
                     const currentPageIndexAndLink = {
                         index: 0 as number,
-                        links: [] as string[],
+                        // links: [] as string[],
                         courts: [] as string[],
                     };
 
@@ -166,16 +188,16 @@ const scrapeCases = async (): Promise<void> => {
                         }
                     }
 
-                    const postLinks = document.querySelectorAll(".post");
+                    // const postLinks = document.querySelectorAll(".post");
 
-                    for (const postLink of postLinks) {
-                        const readMoreLink = postLink.querySelector(".show-more");
-                        const readMoreHref = readMoreLink?.getAttribute("href");
+                    // for (const postLink of postLinks) {
+                    //     const readMoreLink = postLink.querySelector(".show-more");
+                    //     const readMoreHref = readMoreLink?.getAttribute("href");
 
-                        if (readMoreHref) {
-                            currentPageIndexAndLink.links.push(readMoreHref);
-                        }
-                    }
+                    //     if (readMoreHref) {
+                    //         currentPageIndexAndLink.links.push(readMoreHref);
+                    //     }
+                    // }
 
                     return currentPageIndexAndLink;
                 });
@@ -190,22 +212,22 @@ const scrapeCases = async (): Promise<void> => {
                 continue;
             }
 
-            if (courtType_Links_And_PageIndex.links.length > 0) {
-                initialCourtCasesLinks.push(courtType_Links_And_PageIndex.links);
-            }
+            // if (courtType_Links_And_PageIndex.links.length > 0) {
+            //     initialCourtCasesLinks.push(courtType_Links_And_PageIndex.links);
+            // }
 
-            const createCountiesResult = await createCounties(courtType_Links_And_PageIndex);
-            if (!createCountiesResult) {
-                return;
-            }
+            // const createCountiesResult = await createCounties(courtType_Links_And_PageIndex);
+            // if (!createCountiesResult) {
+            //     return;
+            // }
 
-            const createCourtsResult = await createCourts(courtType_Links_And_PageIndex);
-            if (createCourtsResult) {
-                console.log(`Created courts successfully`);
-            } else {
-                console.log(`Failed to create courts`);
-                return;
-            }
+            // const createCourtsResult = await createCourts(courtType_Links_And_PageIndex);
+            // if (createCourtsResult) {
+            //     console.log(`Created courts successfully`);
+            // } else {
+            //     console.log(`Failed to create courts`);
+            //     return;
+            // }
 
             await closePage(courtTypePage);
         }
@@ -213,16 +235,74 @@ const scrapeCases = async (): Promise<void> => {
         // console.log(`There are ${initialCourtCasesLinks.length} links to work with`);
 
         //We go through each court type link, utilize the advanced search feature then go through each page for that court type doing what we need to do. 
-        for (const link of links) {
+        for (const courtType of courtTypeLinks) {
             const courtTypePage = await createNewPage(browser);
 
             if (!courtTypePage) {
-                return;
+                continue;
             }
 
-            await navigeToPage(courtTypePage, link.link);
+            await navigeToPage(courtTypePage, courtType.link);
 
-            
+            const awaitAdvancedSearchBtn = await waitForSelectors(courtTypePage, ["#advanced-search", ".group-option", ".search_bt", ".case-search-button"]);
+
+            if (!awaitAdvancedSearchBtn || awaitAdvancedSearchBtn === null) {
+                continue;
+            }
+
+            try {
+                await courtTypePage.click("#myTab li:nth-child(2)");
+            } catch (err) {
+                console.log(`Failed to click element: ${err}`);
+                continue;
+            }
+
+            const evaluateAdvancedSearchView = async (page: Page) => {
+                const selectorId = await page.evaluate(() : string => {
+                    const listElements = document.querySelectorAll(".chzn-drop ul > li");
+
+                    listElements.forEach((liElement) => {
+                        const textContent = liElement.textContent?.trim();
+
+                        if (textContent && courtType.courtType.toLowerCase() === "all environmental & land courts" 
+                            && textContent.toLowerCase() === "environmental and land court") {
+                            console.log(`A match for ${textContent} with id ${liElement.id}`);
+                            return liElement.id;
+                        } else if (textContent && textContent.toLowerCase() === courtType.courtType.toLowerCase()) {
+                            console.log(`A match for ${textContent} with id ${liElement.id}`);
+                            return liElement.id;
+                        }   
+                    });
+
+                    return "";
+                });
+
+                return selectorId;
+            };
+
+            const optionToClickId = await waitForSelectorsAndEvaluatePage(courtTypePage, [".chzn-drop", ".group-option", ".active-result"], evaluateAdvancedSearchView);
+
+            console.log(`Obtained id : ${optionToClickId}`);
+            if (!optionToClickId) {
+                continue;
+            }
+
+            console.log(`The id for court type ${courtType.courtType} : ${optionToClickId}`);
+            const elementToClick = await courtTypePage.$(optionToClickId);
+
+            if (!elementToClick) {
+                continue;
+            }
+
+            await elementToClick.click();
+
+            await courtTypePage.click(".search_bt");
+
+            console.log(`Clicked search button`);
+
+            await courtTypePage.waitForNavigation({waitUntil: "networkidle2"});
+
+            console.log(`Moved to the results page`);
         }
 
         for (const courtTypeLinks of initialCourtCasesLinks) {
