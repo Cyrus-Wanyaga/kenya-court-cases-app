@@ -1,5 +1,5 @@
 import { parentPort } from "worker_threads";
-import puppeteer, { Page, Browser } from "puppeteer";
+import puppeteer, { Page, Browser, ElementHandle } from "puppeteer";
 import { createCounties, createCourts, createCases } from "../utils/scraper_data_parser.js";
 import { initialRunChecker, updateInitialRunValue } from "../utils/initial_run_checker.js";
 
@@ -291,8 +291,8 @@ const scrapeCases = async (): Promise<void> => {
 
             for (const selector of selectors) {
                 if (selector.textContent) {
-                    if (selector.textContent === "environmental and land court" &&
-                        courtType.courtType.toLowerCase().trim() === "all environmental & land courts") {
+                    if (selector.textContent.toLowerCase().includes("environment") &&
+                        courtType.courtType.toLowerCase().includes("environment")) {
                         optionToClickId = "#" + selector.id;
                         break;
                     } else if (selector.textContent === courtType.courtType.toLowerCase().trim()) {
@@ -303,26 +303,19 @@ const scrapeCases = async (): Promise<void> => {
             }
 
             try {
-                console.log(`Obtained id : ${optionToClickId}`);
                 if (!optionToClickId && optionToClickId === null) {
                     console.log(`Something's wrong`);
                     continue;
                 }
+
+                console.log(`Obtained list item id : ${optionToClickId}`);
 
                 if (optionToClickId === "") {
                     console.log(`Empty value`);
                     continue;
                 }
 
-                console.log(`The id for court type ${courtType.courtType} : ${optionToClickId}`);
-                // const elementToClick = await courtTypePage.$(`#${optionToClickId}`);
-
-                // if (!elementToClick) {
-                //     console.log(`No element to click`);
-                //     continue;
-                // }
-
-                // await elementToClick.click();
+                // console.log(`The id for court type ${courtType.courtType} : ${optionToClickId}`);
 
                 let optionConfirm = await waitForSelectors(courtTypePage, optionToClickId);
 
@@ -330,6 +323,8 @@ const scrapeCases = async (): Promise<void> => {
                     console.log(`Failed to await the necessary selector`);
                     continue;
                 }
+
+                console.log(`Awaited list item id ${optionToClickId} successfully`);
 
                 const evaluateInputFieldAndGetId = async (page: Page) => {
                     const parentId = await page.evaluate(() => {
@@ -363,26 +358,99 @@ const scrapeCases = async (): Promise<void> => {
                     continue;
                 }
 
-                result = "#" + result;
+                const resultParts = optionToClickId.split("_");
+                const stepsToClick = resultParts[resultParts.length - 1];
+                const dropDownOptionsSelector = "#" + result + " .chzn-drop .chzn-results";
+                result = "#" + result + " input";
 
-                console.log(`Attempting to click div with id : ${result}`);
+                // console.log(`Attempting to click input : ${result}`);
 
                 optionConfirm = await waitForSelectors(courtTypePage, `${result}`);
+
+                console.log(`Awaited input field ${result} successfully`);
 
                 if (!optionConfirm || optionConfirm === null) {
                     console.log(`Failed to await the necessary selector`);
                     continue;
                 }
 
-                await courtTypePage.click(result);
+                console.log(`Clicking input field : ${result}`);
+                await courtTypePage.$eval(result, element =>
+                    (element as HTMLElement).click()
+                );
 
-                // await courtTypePage.$eval(result, element =>
+                console.log(`Clicked input field : ${result}`);
+
+                // optionConfirm = await waitForSelectors(courtTypePage, dropDownOptionsSelector);
+
+                // if (!optionConfirm || optionConfirm === null) {
+                //     console.log(`Failed to await the necessary selector`);
+                //     continue;
+                // }
+
+                // let element: ElementHandle | null = await courtTypePage.$(`::-p-xpath(//*[@id="${optionToClickId.replaceAll("#", "")}"])`);
+
+                // if (!element) {
+                //     console.log(`No such element`);
+                //     continue;
+                // } else {
+                //     console.log(JSON.stringify(element));
+                //     await element.screenshot({
+                //         path: "/Users/georgegithogori/Cyrus Work/Node Projects/kenya-court-cases-app/pics"
+                //     });
+                // }
+
+                // const visible = await element.isVisible();
+                // console.log(`Visible : ${visible}`);
+                // await element.hover();
+
+                // await element.click();
+
+                await courtTypePage.$eval(optionToClickId, element => {
+                    console.log(`Attempting to click : ${element}`);
+                    (element as HTMLElement).click();
+                });
+
+                // await courtTypePage.focus(dropDownOptionsSelector);
+
+                // console.log(`We are taking ${stepsToClick} steps`);
+
+                // for (let i = 0; i < parseInt(stepsToClick) - 1; i++) {
+                //     console.log('Arrow down maybe...I can\'t see shit');
+                //     await courtTypePage.keyboard.press('ArrowDown');
+                // }
+
+                // await courtTypePage.keyboard.press('Enter');
+
+                // await courtTypePage.click(optionToClickId);
+                // let newOptionToClickId = "li" + optionToClickId;
+
+                // optionConfirm = await waitForSelectors(courtTypePage, newOptionToClickId);
+
+                // if (!optionConfirm || optionConfirm === null) {
+                //     console.log(`Failed to await the necessary selector`);
+                //     continue;
+                // }
+
+                // console.log(`Awaited list item ${newOptionToClickId} successfully`);
+
+                // const optionExists = await courtTypePage.$(newOptionToClickId);
+
+                // if(optionExists) {
+                //     console.log(`The option does exist : ${JSON.stringify(optionExists)}`);
+                // }
+
+                // await courtTypePage.$eval(newOptionToClickId, element => {
+                //     element.scrollIntoView();
+                //     (element as HTMLElement).style.border = '2px solid red';
+                // });
+
+                // console.log(`Clicking on list item : ${newOptionToClickId}`);
+                // await courtTypePage.$eval(newOptionToClickId, element =>
                 //     (element as HTMLElement).click()
                 // );
 
-                await courtTypePage.$eval(optionToClickId, element =>
-                    (element as HTMLElement).click()
-                );
+                // console.log(`Clicked on list item : ${newOptionToClickId}`);
 
                 await courtTypePage.$eval(".search_bt", element =>
                     (element as HTMLElement).click()
