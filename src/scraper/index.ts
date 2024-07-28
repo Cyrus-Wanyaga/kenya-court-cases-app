@@ -212,22 +212,18 @@ const scrapeCases = async (): Promise<void> => {
                 continue;
             }
 
-            // if (courtType_Links_And_PageIndex.links.length > 0) {
-            //     initialCourtCasesLinks.push(courtType_Links_And_PageIndex.links);
-            // }
+            const createCountiesResult = await createCounties(courtType_Links_And_PageIndex);
+            if (!createCountiesResult) {
+                return;
+            }
 
-            // const createCountiesResult = await createCounties(courtType_Links_And_PageIndex);
-            // if (!createCountiesResult) {
-            //     return;
-            // }
-
-            // const createCourtsResult = await createCourts(courtType_Links_And_PageIndex);
-            // if (createCourtsResult) {
-            //     console.log(`Created courts successfully`);
-            // } else {
-            //     console.log(`Failed to create courts`);
-            //     return;
-            // }
+            const createCourtsResult = await createCourts(courtType_Links_And_PageIndex);
+            if (createCourtsResult) {
+                console.log(`Created courts successfully`);
+            } else {
+                console.log(`Failed to create courts`);
+                return;
+            }
 
             await closePage(courtTypePage);
         }
@@ -304,18 +300,16 @@ const scrapeCases = async (): Promise<void> => {
 
             try {
                 if (!optionToClickId && optionToClickId === null) {
-                    console.log(`Something's wrong`);
+                    console.log(`Could not obtain court type option id for court type ${courtType.courtType}`);
                     continue;
                 }
 
-                console.log(`Obtained list item id : ${optionToClickId}`);
+                console.log(`Obtained option to click id : ${optionToClickId} for court type ${courtType.courtType}`);
 
                 if (optionToClickId === "") {
-                    console.log(`Empty value`);
+                    console.log(`Could not obtain court type option id for court type ${courtType.courtType}`);
                     continue;
                 }
-
-                // console.log(`The id for court type ${courtType.courtType} : ${optionToClickId}`);
 
                 let optionConfirm = await waitForSelectors(courtTypePage, optionToClickId);
 
@@ -324,7 +318,7 @@ const scrapeCases = async (): Promise<void> => {
                     continue;
                 }
 
-                console.log(`Awaited list item id ${optionToClickId} successfully`);
+                console.log(`Awaited option to click id ${optionToClickId} successfully`);
 
                 const evaluateInputFieldAndGetId = async (page: Page) => {
                     const parentId = await page.evaluate(() => {
@@ -354,23 +348,19 @@ const scrapeCases = async (): Promise<void> => {
                 let result = await evaluateInputFieldAndGetId(courtTypePage);
 
                 if (!result) {
-                    console.log(`Could not obtain id to work with`);
+                    console.log(`Could not obtain input field id to click to trigger the dropdown`);
                     continue;
                 }
 
-                const resultParts = optionToClickId.split("_");
-                const stepsToClick = resultParts[resultParts.length - 1];
-                const dropDownOptionsSelector = "#" + result + " .chzn-drop .chzn-results";
+                const dropDownOptionsSelector = "#" + result + " .chzn-drop .chzn-results .active-result";
                 result = "#" + result + " input";
-
-                // console.log(`Attempting to click input : ${result}`);
 
                 optionConfirm = await waitForSelectors(courtTypePage, `${result}`);
 
                 console.log(`Awaited input field ${result} successfully`);
 
                 if (!optionConfirm || optionConfirm === null) {
-                    console.log(`Failed to await the necessary selector`);
+                    console.log(`Failed to await the input field selector`);
                     continue;
                 }
 
@@ -381,133 +371,172 @@ const scrapeCases = async (): Promise<void> => {
 
                 console.log(`Clicked input field : ${result}`);
 
-                // optionConfirm = await waitForSelectors(courtTypePage, dropDownOptionsSelector);
+                console.log(`Awaiting drop down selector ${dropDownOptionsSelector}`);
+                optionConfirm = await waitForSelectors(courtTypePage, dropDownOptionsSelector);
 
-                // if (!optionConfirm || optionConfirm === null) {
-                //     console.log(`Failed to await the necessary selector`);
-                //     continue;
-                // }
+                if (!optionConfirm) {
+                    console.log(`Failed to await the drop down selector`);
+                    continue;
+                }
 
-                // let element: ElementHandle | null = await courtTypePage.$(`::-p-xpath(//*[@id="${optionToClickId.replaceAll("#", "")}"])`);
+                console.log(`Awaited drop down selector ${dropDownOptionsSelector} successfully`);
 
-                // if (!element) {
-                //     console.log(`No such element`);
-                //     continue;
-                // } else {
-                //     console.log(JSON.stringify(element));
-                //     await element.screenshot({
-                //         path: "/Users/georgegithogori/Cyrus Work/Node Projects/kenya-court-cases-app/pics"
-                //     });
-                // }
+                await courtTypePage.evaluate((selector) => {
+                    const element = document.querySelector(selector);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const mousedown = new MouseEvent('mousedown', {
+                            view: window,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(mousedown);
+                        
+                        const mouseup = new MouseEvent('mouseup', {
+                            view: window,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(mouseup);
+                    }
+                }, optionToClickId);
 
-                // const visible = await element.isVisible();
-                // console.log(`Visible : ${visible}`);
-                // await element.hover();
-
-                // await element.click();
-
-                await courtTypePage.$eval(optionToClickId, element => {
-                    console.log(`Attempting to click : ${element}`);
-                    (element as HTMLElement).click();
-                });
-
-                // await courtTypePage.focus(dropDownOptionsSelector);
-
-                // console.log(`We are taking ${stepsToClick} steps`);
-
-                // for (let i = 0; i < parseInt(stepsToClick) - 1; i++) {
-                //     console.log('Arrow down maybe...I can\'t see shit');
-                //     await courtTypePage.keyboard.press('ArrowDown');
-                // }
-
-                // await courtTypePage.keyboard.press('Enter');
-
-                // await courtTypePage.click(optionToClickId);
-                // let newOptionToClickId = "li" + optionToClickId;
-
-                // optionConfirm = await waitForSelectors(courtTypePage, newOptionToClickId);
-
-                // if (!optionConfirm || optionConfirm === null) {
-                //     console.log(`Failed to await the necessary selector`);
-                //     continue;
-                // }
-
-                // console.log(`Awaited list item ${newOptionToClickId} successfully`);
-
-                // const optionExists = await courtTypePage.$(newOptionToClickId);
-
-                // if(optionExists) {
-                //     console.log(`The option does exist : ${JSON.stringify(optionExists)}`);
-                // }
-
-                // await courtTypePage.$eval(newOptionToClickId, element => {
-                //     element.scrollIntoView();
-                //     (element as HTMLElement).style.border = '2px solid red';
-                // });
-
-                // console.log(`Clicking on list item : ${newOptionToClickId}`);
-                // await courtTypePage.$eval(newOptionToClickId, element =>
-                //     (element as HTMLElement).click()
-                // );
-
-                // console.log(`Clicked on list item : ${newOptionToClickId}`);
-
+                console.log(`Clicked on option to click id ${optionToClickId} successfully`);
+                
+                console.log(`Attempting to click on search button`);
                 await courtTypePage.$eval(".search_bt", element =>
                     (element as HTMLElement).click()
                 );
-
                 console.log(`Clicked search button`);
 
                 await courtTypePage.waitForNavigation({ waitUntil: "networkidle2" });
 
                 console.log(`Moved to the results page`);
-            } catch (err) {
-                console.log(`A big denda : ${err}`);
-            }
-        }
 
-        for (const courtTypeLinks of initialCourtCasesLinks) {
-            for (const link of courtTypeLinks) {
-                const courtCasePage = await createNewPage(browser);
+                const evaluateCourtTypeResultsPage = async (page: Page) => {
+                    const currentPageLinks = await page.evaluate(() => {
+                        const links : string[] = [];
 
-                if (!courtCasePage) {
-                    return;
-                }
+                        const postLinks = document.querySelectorAll(".post");
 
-                await navigeToPage(courtCasePage, link);
-
-                const evaluateCourtCasePage = async (page: Page) => {
-                    const headerAndValueObjects = await page.evaluate(async () => {
-                        const tableRows = document.querySelectorAll(".meta_info tbody tr");
-
-                        let headerAndValueObject = [] as any;
-
-                        for (const tableRow of tableRows) {
-                            let rowHeader = tableRow.querySelector("th")?.textContent;
-                            let rowValue = tableRow.querySelector("td")?.textContent;
-
-                            let headerAndValueObj = {
-                                header: rowHeader && rowHeader !== "" ? rowHeader : "",
-                                value: rowValue && rowValue !== "" ? rowValue : ""
-                            };
-
-                            headerAndValueObject.push(headerAndValueObj);
+                        for (const postLink of postLinks) {
+                            const readMoreLink = postLink.querySelector(".show-more");
+                            const readMoreHref = readMoreLink?.getAttribute("href");
+    
+                            if (readMoreHref) {
+                                links.push(readMoreHref);
+                            }
                         }
 
-                        return headerAndValueObject;
+                        return links;
                     });
 
-                    return headerAndValueObjects;
+                    return currentPageLinks;
                 }
 
-                const caseHeaderAndValueObjects = await waitForSelectorsAndEvaluatePage(courtCasePage, ['#toggle_meta', '#case_meta', '.meta_info'], evaluateCourtCasePage);
+                const courtTypeResultsPageLinks = await waitForSelectorsAndEvaluatePage(courtTypePage, [".pages", ".post"], evaluateCourtTypeResultsPage);
 
-                if (caseHeaderAndValueObjects && caseHeaderAndValueObjects.length > 0) {
-                    await createCases(caseHeaderAndValueObjects);
+                if (!courtTypeResultsPageLinks && courtTypeResultsPageLinks.length <= 0) {
+                    console.log(`No results to work with for court type ${courtType.courtType}`);
+                    continue;
                 }
-                await closePage(courtCasePage);
+
+                for (const caseLink of courtTypeResultsPageLinks) {
+                    await courtTypePage.goto(caseLink, { waitUntil: "networkidle2" });
+
+                    // Wait for the elements with the IDs "toggle_meta" and "case_meta"
+                    const awaitCourtCasePageSelectors = await waitForSelectors(courtTypePage, ["#toggle_meta", "#case_meta", ".meta_info"]);
+
+                    if (awaitCourtCasePageSelectors === null) {
+                        console.log(`Failed to await selectors for court case page at link ${caseLink}`);
+                    }
+                    // Click on the toggle button
+                    await courtTypePage.click("#toggle_meta");
+
+                    const evaluateCourtCasePage = async (page: Page) => {
+                        const headerAndValueObjects = await courtTypePage.evaluate(async () => {
+                            const tableRows = document.querySelectorAll(".meta_info tbody tr");
+
+                            let browserHeaderAndValueObjects = [] as any;
+
+                            for (const tableRow of tableRows) {
+                                let rowHeader = tableRow.querySelector("th")?.textContent;
+                                let rowValue = tableRow.querySelector("td")?.textContent;
+
+                                let headerAndValueObj = {
+                                    header: rowHeader && rowHeader !== "" ? rowHeader : "",
+                                    value: rowValue && rowValue !== "" ? rowValue : ""
+                                };
+
+                                browserHeaderAndValueObjects.push(headerAndValueObj);
+                            }
+
+                            return browserHeaderAndValueObjects;
+                        });
+
+                        return headerAndValueObjects;
+                    }
+
+                    const courtCaseHeaderAndValueObjects = await waitForSelectorsAndEvaluatePage(courtTypePage, ["#toggle_meta", "#case_meta", ".meta_info"], evaluateCourtCasePage);
+
+                    if (courtCaseHeaderAndValueObjects === null || courtCaseHeaderAndValueObjects.length <= 0) {
+                        console.log(`Failed to fetch court case meta data for case page at link ${caseLink}`);
+                        continue;
+                    }
+
+                    await createCases(courtCaseHeaderAndValueObjects);
+
+                    console.log(`Created court cases`);
+
+                    await courtTypePage.goBack();
+                }
+            } catch (err) {
+                console.log(`${err}`);
             }
         }
+
+        // for (const courtTypeLinks of initialCourtCasesLinks) {
+        //     for (const link of courtTypeLinks) {
+        //         const courtCasePage = await createNewPage(browser);
+
+        //         if (!courtCasePage) {
+        //             return;
+        //         }
+
+        //         await navigeToPage(courtCasePage, link);
+
+        //         const evaluateCourtCasePage = async (page: Page) => {
+        //             const headerAndValueObjects = await page.evaluate(async () => {
+        //                 const tableRows = document.querySelectorAll(".meta_info tbody tr");
+
+        //                 let headerAndValueObject = [] as any;
+
+        //                 for (const tableRow of tableRows) {
+        //                     let rowHeader = tableRow.querySelector("th")?.textContent;
+        //                     let rowValue = tableRow.querySelector("td")?.textContent;
+
+        //                     let headerAndValueObj = {
+        //                         header: rowHeader && rowHeader !== "" ? rowHeader : "",
+        //                         value: rowValue && rowValue !== "" ? rowValue : ""
+        //                     };
+
+        //                     headerAndValueObject.push(headerAndValueObj);
+        //                 }
+
+        //                 return headerAndValueObject;
+        //             });
+
+        //             return headerAndValueObjects;
+        //         }
+
+        //         const caseHeaderAndValueObjects = await waitForSelectorsAndEvaluatePage(courtCasePage, ['#toggle_meta', '#case_meta', '.meta_info'], evaluateCourtCasePage);
+
+        //         if (caseHeaderAndValueObjects && caseHeaderAndValueObjects.length > 0) {
+        //             await createCases(caseHeaderAndValueObjects);
+        //         }
+        //         await closePage(courtCasePage);
+        //     }
+        // }
     } else {
         console.log(`Not the first run`);
     }
