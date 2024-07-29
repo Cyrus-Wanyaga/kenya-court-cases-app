@@ -1,5 +1,6 @@
-import { County, Court, Case, Judge, CaseJudge } from "../models/index.js";
+import { County, Court, Case, Judge, CaseJudge, Advocate, CaseAdvocate } from "../models/index.js";
 import sequelize from "../middleware/sequelize.js";
+import { Op } from "sequelize";
 
 let courtName: any;
 let type: any;
@@ -236,7 +237,7 @@ export const createCounties = async (courts: any): Promise<boolean> => {
 
 export const createCases = async (caseHeaderAndValueObjects: any) => {
     const getCaseMetaData = async () => {
-        let title = "", caseNumber = "", parties = "", caseClass = "", caseAction = "", citation = "", judges = "";
+        let title = "", caseNumber = "", parties = "", caseClass = "", caseAction = "", citation = "", judges = "", advocates = "";
         let court = 0;
         let dateDelivered = undefined;
 
@@ -295,6 +296,9 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     case "judge(s)":
                         judges = rowValue;
                         break;
+                    case "advocates":
+                        advocates = rowValue;
+                        break;
                     default:
                         break;
                 }
@@ -309,107 +313,259 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
             caseClass: caseClass,
             citation: citation,
             court: court,
-            judges: judges
+            judges: judges,
+            advocates: advocates
         }
     }
 
     let caseMetaData_ = await getCaseMetaData() as any;
-    if (caseMetaData_) {
-        console.log(`Case meta data was returned`);
-        console.log(JSON.stringify(caseMetaData_));
-        let caseNumber;
-        if (caseMetaData_.caseNumber) {
-            caseNumber = caseMetaData_.caseNumber;
-        }
+    try {
+        if (caseMetaData_) {
+            console.log(`Case meta data was returned`);
+            // console.log(JSON.stringify(caseMetaData_));
+            let caseNumber;
+            if (caseMetaData_.caseNumber) {
+                caseNumber = caseMetaData_.caseNumber;
+            }
 
-        let courtName = "";
-        if (caseMetaData_.court) {
-            courtName = caseMetaData_.court;
-        }
+            let courtName = "";
+            if (caseMetaData_.court) {
+                courtName = caseMetaData_.court;
+            }
 
-        let judgeIds = [];
+            let judgeIds: number[] = [];
+            let advocateIds: number[] = [];
 
-        if (caseMetaData_.judges) {
-            let judges: string = "";
-            judges = caseMetaData_.judges;
+            if (caseMetaData_.judges) {
+                let judges: string = "";
+                judges = caseMetaData_.judges;
 
-            const createJudge = async (judgeName: string) => {
-                let judgeObj: Judge;
-                let created: boolean;
+                const createJudge = async (judgeName: string) => {
+                    let judgeObj: Judge;
+                    let created: boolean;
 
-                const [judgeInstance, judgeCreated] = await Judge.findOrCreate({
-                    where: { name: judgeName.trim() },
-                    defaults: {
-                        name: judgeName,
-                        dateCreated: new Date(),
-                        dateModified: new Date()
+                    const [judgeInstance, judgeCreated] = await Judge.findOrCreate({
+                        where: { name: judgeName.trim() },
+                        defaults: {
+                            name: judgeName,
+                            dateCreated: new Date(),
+                            dateModified: new Date()
+                        }
+                    });
+
+                    judgeObj = judgeInstance;
+                    created = judgeCreated;
+
+                    return {
+                        judgeObj: judgeObj,
+                        created: created
                     }
-                });
+                };
 
-                judgeObj = judgeInstance;
-                created = judgeCreated;
+                if (judges.includes(",")) {
+                    let judgeNames = judges.split(",");
 
-                return {
-                    judgeObj: judgeObj,
-                    created: created
-                }
-            };
+                    for (const judgeName of judgeNames) {
+                        const judgeCreated: any = await createJudge(judgeName);
 
-            if (judges.includes(",")) {
-                let judgeNames = judges.split(",");
+                        if (!judgeCreated.created) {
+                            console.log(`Failed to create judge ${judgeName}`);
+                            continue;
+                        } else {
+                            if (judgeCreated.judgeObj && judgeCreated.created) {
+                                console.log(`Created judge ${judgeCreated.judgeObj.get('name')} successfully`);
+                                judgeIds.push(judgeCreated.judgeObj.get('id'));
+                            } else if (judgeCreated.judgeObj && !judgeCreated.created) {
+                                console.log(`Judge ${judgeName} already exists with id : ${judgeCreated.judgeObj.get('id')}`);
+                                judgeIds.push(judgeCreated.judgeObj.get('id'));
+                            }
+                        }
+                    }
+                } else {
+                    const judgeCreated: any = await createJudge(judges);
 
-                for (const judgeName of judgeNames) {
-                    const judgeCreated = await createJudge(judgeName);
-
-                    if (!judgeCreated) {
-                        console.log(`Failed to create judge ${judgeName}`);
-                        continue;
+                    if (!judgeCreated.created) {
+                        console.log(`Failed to create judge ${judges}`);
                     } else {
                         if (judgeCreated.judgeObj && judgeCreated.created) {
                             console.log(`Created judge ${judgeCreated.judgeObj.get('name')} successfully`);
                             judgeIds.push(judgeCreated.judgeObj.get('id'));
                         } else if (judgeCreated.judgeObj && !judgeCreated.created) {
-                            console.log(`Judge ${judgeName} already exists with id : ${judgeCreated.judgeObj.get('id')}`);
+                            console.log(`Judge ${judges} already exists with id : ${judgeCreated.judgeObj.get('id')}`);
                             judgeIds.push(judgeCreated.judgeObj.get('id'));
                         }
                     }
                 }
-            } else {
-                const judgeCreated = await createJudge(judges);
+            }
 
-                if (!judgeCreated) {
-                    console.log(`Failed to create judge ${judges}`);
+            if (caseMetaData_.advocates) {
+                let advocates: string = "";
+                advocates = caseMetaData_.advocates;
+
+                const createAdvocate = async (advocateName: string) => {
+                    let advocateObj: Advocate;
+                    let created: boolean;
+
+                    const [advocateInstance, advocateCreated] = await Advocate.findOrCreate({
+                        where: { name: advocateName.trim() },
+                        defaults: {
+                            name: advocateName,
+                            dateCreated: new Date(),
+                            dateModified: new Date()
+                        }
+                    });
+
+                    advocateObj = advocateInstance;
+                    created = advocateCreated;
+
+                    return {
+                        advocateObj: advocateCreated,
+                        created: created
+                    }
+                };
+
+                let advocateNames: string[] = [];
+                if (advocates.includes(",")) {
+                    let advocateNamesArray = advocates.split(",");
+
+                    for (const advocateName of advocateNamesArray) {
+                        if (advocateName.includes(" & ")) {
+                            let moreAdvocateNamesArray = advocateName.split(" & ");
+                            for (const moreAdvocateName of moreAdvocateNamesArray) {
+                                if (moreAdvocateName.toLowerCase().includes("no appearance")) {
+                                    continue;
+                                } else if (moreAdvocateName.toLowerCase().includes("advocate")) {
+                                    continue;
+                                } else {
+                                    advocateNames.push(moreAdvocateName.trim());
+                                }
+                            }
+                        } else {
+                            if (advocateName.toLowerCase().includes("no appearance")) {
+                                continue;
+                            } else if (advocateName.toLowerCase().includes("advocate")) {
+                                continue;
+                            } else {
+                                advocateNames.push(advocateName.trim());
+                            }
+                        }
+                    }
+
+                    for (const advocateName of advocateNames) {
+                        let name = advocateName.includes(" for ") ? advocateName.split(" for ")[0] : advocateName;
+                        const advocateCreated: any = await createAdvocate(name);
+
+                        if (!advocateCreated.created) {
+                            console.log(`Failed to create advocate ${name}`);
+                            continue;
+                        } else {
+                            if (advocateCreated.advocateObj && advocateCreated.created) {
+                                console.log(`Created advocate ${advocateCreated.advocateObj.get('name')} successfully`);
+                                advocateIds.push(advocateCreated.advocateObj.get('id'));
+                            } else if (advocateCreated.judgeObj && !advocateCreated.created) {
+                                console.log(`Advocate ${advocateCreated} already exists with id : ${advocateCreated.advocateObj.get('id')}`);
+                                advocateIds.push(advocateCreated.advocateObj.get('id'));
+                            }
+                        }
+                    }
                 } else {
-                    if (judgeCreated.judgeObj && judgeCreated.created) {
-                        console.log(`Created judge ${judgeCreated.judgeObj.get('name')} successfully`);
-                        judgeIds.push(judgeCreated.judgeObj.get('id'));
-                    } else if (judgeCreated.judgeObj && !judgeCreated.created) {
-                        console.log(`Judge ${judges} already exists with id : ${judgeCreated.judgeObj.get('id')}`);
-                        judgeIds.push(judgeCreated.judgeObj.get('id'));
+                    let name = advocates.includes(" for ") ? advocates.split(" for ")[0] : advocates;
+                    const advocateCreated: any = await createAdvocate(name);
+
+                    if (!advocateCreated.created) {
+                        console.log(`Failed to create advocate ${name}`);
+                    } else {
+                        if (advocateCreated.advocateObj && advocateCreated.created) {
+                            console.log(`Created advocate ${advocateCreated.advocateObj.get('name')} successfully`);
+                            advocateIds.push(advocateCreated.advocateObj.get('id'));
+                        } else if (advocateCreated.judgeObj && !advocateCreated.created) {
+                            console.log(`Advocate ${advocateCreated} already exists with id : ${advocateCreated.advocateObj.get('id')}`);
+                            advocateIds.push(advocateCreated.advocateObj.get('id'));
+                        }
+                    }
+                }
+            }
+
+            const [caseInstance, wasCreated] = await Case.findOrCreate({
+                where: { caseNumber },
+                defaults: {
+                    title: caseMetaData_.title,
+                    caseNumber: caseMetaData_.caseNumber,
+                    parties: caseMetaData_.parties,
+                    dateDelivered: caseMetaData_.dateDelivered,
+                    caseClass: caseMetaData_.caseClass,
+                    courtId: caseMetaData_.court,
+                    dateCreated: new Date(),
+                    dateModified: new Date(),
+                    citation: caseMetaData_.citation
+                }
+            });
+
+            if (wasCreated) {
+                console.log(`Created case title ${caseInstance.get('title')} successfully`);
+            } else {
+                console.log(`Failed to create case title ${caseInstance.get('title')}`);
+            }
+
+            if (judgeIds.length > 0 && caseInstance) {
+                for (const judgeId of judgeIds) {
+                    const [caseJudgeInstance, caseJudgeWasCreated] = await CaseJudge.findOrCreate({
+                        where: {
+                            [Op.and]: [
+                                { judgeId: { [Op.eq]: judgeId } },
+                                { caseId: { [Op.eq]: caseInstance.get('id') } }
+                            ]
+                        },
+                        defaults: {
+                            judgeId: judgeId,
+                            caseId: caseInstance.get('id')
+                        }
+                    });
+
+                    if (!caseJudgeWasCreated) {
+                        console.log(`Failed to create case judge record`);
+                    } else {
+                        if (caseJudgeInstance && caseJudgeWasCreated) {
+                            console.log(`Case judge instance was created successfully`);
+                        } else if (caseJudgeInstance && !caseJudgeWasCreated) {
+                            console.log(`Case judge record was alreay existant with id ${caseJudgeInstance.get('id')}`);
+                        } else {
+                            console.log(`Error. Case judge record not created.`);
+                        }
+                    }
+                }
+            }
+
+            if (advocateIds.length > 0 && caseInstance) {
+                for (const advocateId of advocateIds) {
+                    const [caseAdvocateInstance, caseAdvocateWasCreated] = await CaseAdvocate.findOrCreate({
+                        where: {
+                            [Op.and]: [
+                                { advocateId: { [Op.eq]: advocateId } },
+                                { caseId: { [Op.eq]: caseInstance.get('id') } }
+                            ]
+                        },
+                        defaults: {
+                            advocateId: advocateId,
+                            caseId: caseInstance.get('id')
+                        }
+                    });
+
+                    if (!caseAdvocateWasCreated) {
+                        console.log(`Failed to create case advocate record`);
+                    } else {
+                        if (caseAdvocateInstance && caseAdvocateWasCreated) {
+                            console.log(`Case advocate instance was created successfully`);
+                        } else if (caseAdvocateInstance && !caseAdvocateWasCreated) {
+                            console.log(`Case advocate record was alreay existant with id ${caseAdvocateInstance.get('id')}`);
+                        } else {
+                            console.log(`Error. Case advocate record not created.`);
+                        }
                     }
                 }
             }
         }
-
-        const [caseInstance, wasCreated] = await Case.findOrCreate({
-            where: { caseNumber },
-            defaults: {
-                title: caseMetaData_.title,
-                caseNumber: caseMetaData_.caseNumber,
-                parties: caseMetaData_.parties,
-                dateDelivered: caseMetaData_.dateDelivered,
-                caseClass: caseMetaData_.caseClass,
-                courtId: caseMetaData_.court,
-                dateCreated: new Date(),
-                dateModified: new Date(),
-                citation: caseMetaData_.citation
-            }
-        });
-
-        if (wasCreated) {
-            console.log(`Created case title ${caseInstance.get('title')} successfully`);
-        } else {
-            console.log(`Failed to create case title ${caseInstance.get('title')}`);
-        }
+    } catch (err) {
+        console.log(`An error occurred : ${err}`);
     }
 }
