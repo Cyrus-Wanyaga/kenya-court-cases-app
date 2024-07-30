@@ -378,6 +378,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                             } else if (judgeCreated.judgeObj && !judgeCreated.created) {
                                 console.log(`Judge ${judgeName} already exists with id : ${judgeCreated.judgeObj.get('id')}`);
                                 judgeIds.push(judgeCreated.judgeObj.get('id'));
+                            } else {
+                                console.log(`Error. Judge not created`);
                             }
                         }
                     }
@@ -393,6 +395,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         } else if (judgeCreated.judgeObj && !judgeCreated.created) {
                             console.log(`Judge ${judges} already exists with id : ${judgeCreated.judgeObj.get('id')}`);
                             judgeIds.push(judgeCreated.judgeObj.get('id'));
+                        } else {
+                            console.log(`Error. Judge not created`);
                         }
                     }
                 }
@@ -419,7 +423,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     created = advocateCreated;
 
                     return {
-                        advocateObj: advocateCreated,
+                        advocateObj: advocateInstance,
                         created: created
                     }
                 };
@@ -465,6 +469,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                             } else if (advocateCreated.judgeObj && !advocateCreated.created) {
                                 console.log(`Advocate ${advocateCreated} already exists with id : ${advocateCreated.advocateObj.get('id')}`);
                                 advocateIds.push(advocateCreated.advocateObj.get('id'));
+                            } else {
+                                console.log(`Error. Advocate not created`);
                             }
                         }
                     }
@@ -481,6 +487,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         } else if (advocateCreated.judgeObj && !advocateCreated.created) {
                             console.log(`Advocate ${advocateCreated} already exists with id : ${advocateCreated.advocateObj.get('id')}`);
                             advocateIds.push(advocateCreated.advocateObj.get('id'));
+                        } else {
+                            console.log(`Error. Advocate not created`);
                         }
                     }
                 }
