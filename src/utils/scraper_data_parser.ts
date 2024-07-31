@@ -7,6 +7,8 @@ let type: any;
 let county: any;
 let specialCourt: boolean;
 
+const regex = /\b(?:\d+(?:st|nd|rd|th)(?:\s+to\s+\d+(?:st|nd|rd|th))?(?:,?\s+and\s+\d+(?:st|nd|rd|th)(?:\s+to\s+\d+(?:st|nd|rd|th))?)?\s+Respondents?)\b/gi;
+
 const parseCourtStringToSensibleData = (court: string): void => {
     courtName = court;
     if (courtName.indexOf("[") !== -1) {
@@ -429,10 +431,15 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 };
 
                 let advocateNames: string[] = [];
-                if (advocates.includes(",")) {
-                    let advocateNamesArray = advocates.split(",");
+                let advocateWithoutRedundantData = advocates.replace(/\([\w\s&]*\)[\w\s]*/g, "");
+                advocateWithoutRedundantData = advocateWithoutRedundantData.replace(/holding brief/g, "");
 
-                    for (const advocateName of advocateNamesArray) {
+                if (advocateWithoutRedundantData.includes(",")) {
+                    let advocateNamesArray = advocateWithoutRedundantData.split(",");
+
+                    for (let advocateName of advocateNamesArray) {
+                        advocateName = advocateName.replace(/h\/b/g, "");
+                        advocateName = advocateName.replaceAll(/for[\w\s\(\)&]*/g, "");
                         if (advocateName.includes(" & ")) {
                             let moreAdvocateNamesArray = advocateName.split(" & ");
                             for (const moreAdvocateName of moreAdvocateNamesArray) {
@@ -455,12 +462,12 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         }
                     }
 
-                    for (const advocateName of advocateNames) {
-                        let name = advocateName.includes(" for ") ? advocateName.split(" for ")[0] : advocateName;
-                        const advocateCreated: any = await createAdvocate(name);
+                    for (let advocateName of advocateNames) {
+                        // let name = advocateName.includes(" for ") ? advocateName.split(" for ")[0] : advocateName;
+                        const advocateCreated: any = await createAdvocate(advocateName);
 
                         if (!advocateCreated.created) {
-                            console.log(`Failed to create advocate ${name}`);
+                            console.log(`Failed to create advocate ${advocateName}`);
                             continue;
                         } else {
                             if (advocateCreated.advocateObj && advocateCreated.created) {
@@ -475,11 +482,13 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         }
                     }
                 } else {
-                    let name = advocates.includes(" for ") ? advocates.split(" for ")[0] : advocates;
-                    const advocateCreated: any = await createAdvocate(name);
+                    // let name = advocates.includes(" for ") ? advocates.split(" for ")[0] : advocates;
+                    advocateWithoutRedundantData = advocateWithoutRedundantData.replace(/h\/b/g, "");
+                    advocateWithoutRedundantData = advocateWithoutRedundantData.replaceAll(/for[\w\s\(\)&]*/g, "");
+                    const advocateCreated: any = await createAdvocate(advocateWithoutRedundantData);
 
                     if (!advocateCreated.created) {
-                        console.log(`Failed to create advocate ${name}`);
+                        console.log(`Failed to create advocate ${advocateWithoutRedundantData}`);
                     } else {
                         if (advocateCreated.advocateObj && advocateCreated.created) {
                             console.log(`Created advocate ${advocateCreated.advocateObj.get('name')} successfully`);
