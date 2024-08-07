@@ -304,6 +304,10 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     default:
                         break;
                 }
+
+                if (rowHeader.includes("action") && caseAction === "") {
+                    caseAction = rowValue;
+                }
             }
         }
 
@@ -368,38 +372,29 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     let judgeNames = judges.split(",");
 
                     for (const judgeName of judgeNames) {
-                        const judgeCreated: any = await createJudge(judgeName);
+                        const judgeCreated: any = await createJudge(judgeName.trim());
 
-                        if (!judgeCreated.created) {
-                            console.log(`Failed to create judge ${judgeName}`);
-                            continue;
-                        } else {
-                            if (judgeCreated.judgeObj && judgeCreated.created) {
-                                console.log(`Created judge ${judgeCreated.judgeObj.get('name')} successfully`);
-                                judgeIds.push(judgeCreated.judgeObj.get('id'));
-                            } else if (judgeCreated.judgeObj && !judgeCreated.created) {
-                                console.log(`Judge ${judgeName} already exists with id : ${judgeCreated.judgeObj.get('id')}`);
-                                judgeIds.push(judgeCreated.judgeObj.get('id'));
-                            } else {
-                                console.log(`Error. Judge not created`);
-                            }
-                        }
-                    }
-                } else {
-                    const judgeCreated: any = await createJudge(judges);
-
-                    if (!judgeCreated.created) {
-                        console.log(`Failed to create judge ${judges}`);
-                    } else {
-                        if (judgeCreated.judgeObj && judgeCreated.created) {
-                            console.log(`Created judge ${judgeCreated.judgeObj.get('name')} successfully`);
+                        if (judgeCreated && judgeCreated.judgeObj && !judgeCreated.created) {
+                            console.log(`Failed to create already existing judge ${judgeName} with id ${judgeCreated.judgeObj.get('id')}`);
                             judgeIds.push(judgeCreated.judgeObj.get('id'));
-                        } else if (judgeCreated.judgeObj && !judgeCreated.created) {
-                            console.log(`Judge ${judges} already exists with id : ${judgeCreated.judgeObj.get('id')}`);
+                        } else if (judgeCreated.judgeObj && judgeCreated.created) {
+                            console.log(`Created judge ${judgeCreated.judgeObj.get('name')} successfully`);
                             judgeIds.push(judgeCreated.judgeObj.get('id'));
                         } else {
                             console.log(`Error. Judge not created`);
                         }
+                    }
+                } else {
+                    const judgeCreated: any = await createJudge(judges.trim());
+
+                    if (judgeCreated && judgeCreated.judgeObj && !judgeCreated.created) {
+                        console.log(`Failed to create already existing judge ${judges} with id ${judgeCreated.judgeObj.get('id')}`);
+                        judgeIds.push(judgeCreated.judgeObj.get('id'));
+                    } else if (judgeCreated.judgeObj && judgeCreated.created) {
+                        console.log(`Created judge ${judgeCreated.judgeObj.get('name')} successfully`);
+                        judgeIds.push(judgeCreated.judgeObj.get('id'));
+                    } else {
+                        console.log(`Error. Judge not created`);
                     }
                 }
             }
@@ -440,6 +435,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     for (let advocateName of advocateNamesArray) {
                         advocateName = advocateName.replace(/h\/b/g, "");
                         advocateName = advocateName.replaceAll(/for[\w\s\(\)&]*/g, "");
+                        advocateName = advocateName.replaceAll(regex, "");
                         if (advocateName.includes(" & ")) {
                             let moreAdvocateNamesArray = advocateName.split(" & ");
                             for (const moreAdvocateName of moreAdvocateNamesArray) {
@@ -539,16 +535,14 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         }
                     });
 
-                    if (!caseJudgeWasCreated) {
+                    if (caseJudgeInstance && !caseJudgeWasCreated) {
+                        console.log(`Case judge record was alreay existant with id ${caseJudgeInstance.get('id')}`);
+                    } else if (!caseJudgeWasCreated && (caseJudgeInstance === null || caseJudgeInstance === undefined)) {
                         console.log(`Failed to create case judge record`);
+                    } else if (caseJudgeInstance && caseJudgeWasCreated) {
+                        console.log(`Case judge instance was created successfully`);
                     } else {
-                        if (caseJudgeInstance && caseJudgeWasCreated) {
-                            console.log(`Case judge instance was created successfully`);
-                        } else if (caseJudgeInstance && !caseJudgeWasCreated) {
-                            console.log(`Case judge record was alreay existant with id ${caseJudgeInstance.get('id')}`);
-                        } else {
-                            console.log(`Error. Case judge record not created.`);
-                        }
+                        console.log(`Error. Case judge record not created.`);
                     }
                 }
             }
