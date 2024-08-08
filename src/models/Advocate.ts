@@ -49,11 +49,3 @@ Advocate.init({
 });
 
 export default Advocate;
-
-// caseCategoryLinks.forEach(async (caseCategoryLink) => {
-//     const caseCategoryLinkA = caseCategoryLink.querySelector('a')?.href?.trim() || "";
-
-//     if (caseCategoryLinkA && caseCategoryLinkA.includes("https://kenyalaw.org/caselaw")) {
-//         links.push(caseCategoryLinkA);
-//     }
-// });

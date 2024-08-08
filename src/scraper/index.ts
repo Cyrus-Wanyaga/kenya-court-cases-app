@@ -466,12 +466,14 @@ const scrapeCases = async (): Promise<void> => {
                                     let rowHeader = tableRow.querySelector("th")?.textContent;
                                     let rowValue = tableRow.querySelector("td")?.textContent;
 
-                                    let headerAndValueObj = {
-                                        header: rowHeader && rowHeader !== "" ? rowHeader : "",
-                                        value: rowValue && rowValue !== "" ? rowValue : ""
-                                    };
+                                    if (rowHeader && rowValue) {
+                                        let headerAndValueObj = {
+                                            header: rowHeader && rowHeader !== "" ? rowHeader : "",
+                                            value: rowValue && rowValue !== "" ? rowValue : ""
+                                        };
 
-                                    browserHeaderAndValueObjects.push(headerAndValueObj);
+                                        browserHeaderAndValueObjects.push(headerAndValueObj);
+                                    }
                                 }
 
                                 return browserHeaderAndValueObjects;
