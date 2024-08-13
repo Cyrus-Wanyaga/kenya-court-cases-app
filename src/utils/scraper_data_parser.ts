@@ -1,4 +1,4 @@
-import { County, Court, Case, Judge, CaseJudge, Advocate, CaseAdvocate } from "../models/index.js";
+import { County, Court, Case, Judge, CaseJudge, Advocate, CaseAdvocate, RelatedCases } from "../models/index.js";
 import sequelize from "../middleware/sequelize.js";
 import { Op } from "sequelize";
 
@@ -328,10 +328,9 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
     try {
         if (caseMetaData_) {
             console.log(`Case meta data was returned`);
-            // console.log(JSON.stringify(caseMetaData_));
-            let caseNumber;
-            if (caseMetaData_.caseNumber) {
-                caseNumber = caseMetaData_.caseNumber;
+            let title;
+            if (caseMetaData_.title) {
+                title = caseMetaData_.title;
             }
 
             let courtName = "";
@@ -420,7 +419,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     created = advocateCreated;
 
                     return {
-                        advocateObj: advocateInstance,
+                        advocateObj: advocateObj,
                         created: created
                     }
                 };
@@ -443,6 +442,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                                     continue;
                                 } else if (moreAdvocateName.toLowerCase().includes("advocate")) {
                                     continue;
+                                } else if (moreAdvocateName === "") {
+                                    continue;
                                 } else {
                                     advocateNames.push(moreAdvocateName.trim());
                                 }
@@ -452,6 +453,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                                 continue;
                             } else if (advocateName.toLowerCase().includes("advocate")) {
                                 continue;
+                            } else if (advocateName === "") {
+                                continue;
                             } else {
                                 advocateNames.push(advocateName.trim());
                             }
@@ -459,8 +462,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     }
 
                     for (let advocateName of advocateNames) {
-                        // let name = advocateName.includes(" for ") ? advocateName.split(" for ")[0] : advocateName;
-                        const advocateCreated: any = await createAdvocate(advocateName);
+                        const advocateCreated: any = await createAdvocate(advocateName.trim());
 
                         if (!advocateCreated.created) {
                             console.log(`Failed to create advocate ${advocateName}`);
@@ -478,10 +480,9 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         }
                     }
                 } else {
-                    // let name = advocates.includes(" for ") ? advocates.split(" for ")[0] : advocates;
                     advocateWithoutRedundantData = advocateWithoutRedundantData.replace(/h\/b/g, "");
                     advocateWithoutRedundantData = advocateWithoutRedundantData.replaceAll(/for[\w\s\(\)&]*/g, "");
-                    const advocateCreated: any = await createAdvocate(advocateWithoutRedundantData);
+                    const advocateCreated: any = await createAdvocate(advocateWithoutRedundantData.trim());
 
                     if (!advocateCreated.created) {
                         console.log(`Failed to create advocate ${advocateWithoutRedundantData}`);
@@ -499,13 +500,25 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 }
             }
 
+            const date = new Date(caseMetaData_.dateDelivered);
+
+            const pad = (num: number): string => num.toString().padStart(2, '0');
+
+            const formatDateToUTC = (date: Date): string => {
+                const year: number = date.getUTCFullYear();
+                const month: string = pad(date.getUTCMonth() + 1); // getUTCMonth() returns 0-11, so we add 1
+                const day: string = pad(date.getUTCDate());
+
+                return `${year}-${month}-${day}`;
+            };
+
             const [caseInstance, wasCreated] = await Case.findOrCreate({
-                where: { caseNumber },
+                where: { title },
                 defaults: {
                     title: caseMetaData_.title,
                     caseNumber: caseMetaData_.caseNumber,
                     parties: caseMetaData_.parties,
-                    dateDelivered: caseMetaData_.dateDelivered,
+                    dateDelivered: new Date(`${formatDateToUTC(date)}T00:00:00.000Z`),
                     caseClass: caseMetaData_.caseClass,
                     courtId: caseMetaData_.court,
                     dateCreated: new Date(),
@@ -516,6 +529,47 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
 
             if (wasCreated) {
                 console.log(`Created case title ${caseInstance.get('title')} successfully`);
+
+                const existingCase = await Case.findAll({
+                    where: {
+                        caseNumber: caseInstance.get('caseNumber')
+                    },
+                    order: [
+                        ['id', 'DESC']
+                    ],
+                    limit: 1
+                });
+
+                if (existingCase !== null) {
+                    console.log('Related case has been found');
+
+                    if (existingCase[0].get('id') !== caseInstance.get('id')) {
+                        const [relatedCasesInstance, relatedCasesInstanceWasCreated] = await RelatedCases.findOrCreate({
+                            where: {
+                                [Op.and]: [
+                                    { parentCaseId: { [Op.eq]: caseInstance.get('id') } },
+                                    { childCaseId: { [Op.eq]: existingCase[0].get('id') } }
+                                ]
+                            },
+                            defaults: {
+                                parentCaseId: caseInstance.get('id'),
+                                childCaseId: existingCase[0].get('id')
+                            }
+                        });
+
+                        if (!relatedCasesInstanceWasCreated) {
+                            console.log(`Failed to create related cases record`);
+                        } else {
+                            if (relatedCasesInstance && relatedCasesInstanceWasCreated) {
+                                console.log(`related cases instance was created successfully`);
+                            } else if (relatedCasesInstance && !relatedCasesInstanceWasCreated) {
+                                console.log(`related cases record was alreay existant with id ${relatedCasesInstance.get('id')}`);
+                            } else {
+                                console.log(`Error. related cases record not created.`);
+                            }
+                        }
+                    }
+                }
             } else {
                 console.log(`Failed to create case title ${caseInstance.get('title')}`);
             }
