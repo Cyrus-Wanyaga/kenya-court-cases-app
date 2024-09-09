@@ -3,11 +3,14 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import { Worker } from 'node:worker_threads';
 import sequelize from './middleware/sequelize.js';
+import advocateRouter from './routes/AdvocateRoutes.js';
 
 const app: Application = express();
 
 app.use(bodyParser.json());
 app.use(cors());
+
+app.use('/api/advocate', advocateRouter);
 
 app.get('/', (req: Request, resp: Response) => {
     resp.json({ statusMessage: "Hello World!" });
