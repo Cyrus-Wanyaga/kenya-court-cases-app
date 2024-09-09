@@ -8,6 +8,7 @@ interface DatabaseConfig {
     database?: string;
     password?: string;
     port?: number;
+    logging?: any;
 }
 
 interface AppUrlLinks {
@@ -31,6 +32,7 @@ const config: Config = {
         password: process.env.DB_PASSWORD,
         host: process.env.DB_HOST || 'localhost',
         port: Number(process.env.DB_PORT) || 5432,
+        logging: console.log
     },
     appUrlLinks: {
         baseUrl: 'https://www.kenyalaw.org/caselaw'

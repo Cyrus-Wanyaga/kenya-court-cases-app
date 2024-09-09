@@ -413,83 +413,97 @@ const scrapeCases = async (): Promise<void> => {
 
                 console.log(`Moved to the results page`);
 
-                const evaluateCourtTypeResultsPage = async (page: Page) => {
-                    const currentPageLinks = await page.evaluate(() => {
-                        const links : string[] = [];
+                let navigateToNextPage = true;
 
-                        const postLinks = document.querySelectorAll(".post");
+                do {
+                    const nextBtn = await waitForSelectors(courtTypePage, [".pagination", ".clearfix", ".pages", ".next"]);
+                    if (nextBtn === null || !nextBtn) {
+                        console.log(`No next page link`);
+                        navigateToNextPage = false;
+                    }
 
-                        for (const postLink of postLinks) {
-                            const readMoreLink = postLink.querySelector(".show-more");
-                            const readMoreHref = readMoreLink?.getAttribute("href");
+                    const evaluateCourtTypeResultsPage = async (page: Page) => {
+                        const currentPageLinks = await page.evaluate(() => {
+                            const links : string[] = [];
     
-                            if (readMoreHref) {
-                                links.push(readMoreHref);
+                            const postLinks = document.querySelectorAll(".post");
+    
+                            for (const postLink of postLinks) {
+                                const readMoreLink = postLink.querySelector(".show-more");
+                                const readMoreHref = readMoreLink?.getAttribute("href");
+        
+                                if (readMoreHref) {
+                                    links.push(readMoreHref);
+                                }
                             }
-                        }
-
-                        return links;
-                    });
-
-                    return currentPageLinks;
-                }
-
-                const courtTypeResultsPageLinks = await waitForSelectorsAndEvaluatePage(courtTypePage, [".pages", ".post"], evaluateCourtTypeResultsPage);
-
-                if (!courtTypeResultsPageLinks && courtTypeResultsPageLinks.length <= 0) {
-                    console.log(`No results to work with for court type ${courtType.courtType}`);
-                    continue;
-                }
-
-                for (const caseLink of courtTypeResultsPageLinks) {
-                    await courtTypePage.goto(caseLink, { waitUntil: "networkidle2" });
-
-                    // Wait for the elements with the IDs "toggle_meta" and "case_meta"
-                    const awaitCourtCasePageSelectors = await waitForSelectors(courtTypePage, ["#toggle_meta", "#case_meta", ".meta_info"]);
-
-                    if (awaitCourtCasePageSelectors === null) {
-                        console.log(`Failed to await selectors for court case page at link ${caseLink}`);
-                    }
-                    // Click on the toggle button
-                    await courtTypePage.click("#toggle_meta");
-
-                    const evaluateCourtCasePage = async (page: Page) => {
-                        const headerAndValueObjects = await courtTypePage.evaluate(async () => {
-                            const tableRows = document.querySelectorAll(".meta_info tbody tr");
-
-                            let browserHeaderAndValueObjects = [] as any;
-
-                            for (const tableRow of tableRows) {
-                                let rowHeader = tableRow.querySelector("th")?.textContent;
-                                let rowValue = tableRow.querySelector("td")?.textContent;
-
-                                let headerAndValueObj = {
-                                    header: rowHeader && rowHeader !== "" ? rowHeader : "",
-                                    value: rowValue && rowValue !== "" ? rowValue : ""
-                                };
-
-                                browserHeaderAndValueObjects.push(headerAndValueObj);
-                            }
-
-                            return browserHeaderAndValueObjects;
+    
+                            return links;
                         });
-
-                        return headerAndValueObjects;
+    
+                        return currentPageLinks;
                     }
-
-                    const courtCaseHeaderAndValueObjects = await waitForSelectorsAndEvaluatePage(courtTypePage, ["#toggle_meta", "#case_meta", ".meta_info"], evaluateCourtCasePage);
-
-                    if (courtCaseHeaderAndValueObjects === null || courtCaseHeaderAndValueObjects.length <= 0) {
-                        console.log(`Failed to fetch court case meta data for case page at link ${caseLink}`);
+    
+                    const courtTypeResultsPageLinks = await waitForSelectorsAndEvaluatePage(courtTypePage, [".pages", ".post"], evaluateCourtTypeResultsPage);
+    
+                    if (!courtTypeResultsPageLinks && courtTypeResultsPageLinks.length <= 0) {
+                        console.log(`No results to work with for court type ${courtType.courtType}`);
                         continue;
                     }
-
-                    await createCases(courtCaseHeaderAndValueObjects);
-
-                    console.log(`Created court cases`);
-
-                    await courtTypePage.goBack();
-                }
+    
+                    for (const caseLink of courtTypeResultsPageLinks) {
+                        await courtTypePage.goto(caseLink, { waitUntil: "networkidle2" });
+    
+                        // Wait for the elements with the IDs "toggle_meta" and "case_meta"
+                        const awaitCourtCasePageSelectors = await waitForSelectors(courtTypePage, ["#toggle_meta", "#case_meta", ".meta_info"]);
+    
+                        if (awaitCourtCasePageSelectors === null) {
+                            console.log(`Failed to await selectors for court case page at link ${caseLink}`);
+                        }
+                        // Click on the toggle button
+                        await courtTypePage.click("#toggle_meta");
+    
+                        const evaluateCourtCasePage = async (page: Page) => {
+                            const headerAndValueObjects = await courtTypePage.evaluate(async () => {
+                                const tableRows = document.querySelectorAll(".meta_info tbody tr");
+    
+                                let browserHeaderAndValueObjects = [] as any;
+    
+                                for (const tableRow of tableRows) {
+                                    let rowHeader = tableRow.querySelector("th")?.textContent;
+                                    let rowValue = tableRow.querySelector("td")?.textContent;
+    
+                                    let headerAndValueObj = {
+                                        header: rowHeader && rowHeader !== "" ? rowHeader : "",
+                                        value: rowValue && rowValue !== "" ? rowValue : ""
+                                    };
+    
+                                    browserHeaderAndValueObjects.push(headerAndValueObj);
+                                }
+    
+                                return browserHeaderAndValueObjects;
+                            });
+    
+                            return headerAndValueObjects;
+                        }
+    
+                        const courtCaseHeaderAndValueObjects = await waitForSelectorsAndEvaluatePage(courtTypePage, ["#toggle_meta", "#case_meta", ".meta_info"], evaluateCourtCasePage);
+    
+                        if (courtCaseHeaderAndValueObjects === null || courtCaseHeaderAndValueObjects.length <= 0) {
+                            console.log(`Failed to fetch court case meta data for case page at link ${caseLink}`);
+                            continue;
+                        }
+    
+                        await createCases(courtCaseHeaderAndValueObjects);
+    
+                        console.log(`Created court cases`);
+    
+                        await courtTypePage.goBack();
+                    }
+                    
+                    if (nextBtn) {
+                        console.log(`Moving to next page`);
+                    }
+                } while (navigateToNextPage);
             } catch (err) {
                 console.log(`${err}`);
             }

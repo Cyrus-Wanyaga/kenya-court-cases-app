@@ -10,9 +10,9 @@ interface JudgeAttributes {
 
 interface JudgeCreationAttributes extends Optional<JudgeAttributes, 'id'> { }
 
-class Judge extends Model<JudgeAttributes, JudgeCreationAttributes> {
-    private id!: number;
-    private name!: string;
+class Judge extends Model<JudgeAttributes, JudgeCreationAttributes> implements JudgeAttributes {
+    public id!: number;
+    public name!: string;
     public dateCreated!: Date;
     public dateModified!: Date;
 
@@ -29,7 +29,8 @@ Judge.init({
     },
     name: {
         type: DataTypes.STRING(255),
-        allowNull: false
+        allowNull: false,
+        unique: true
     },
     dateCreated: {
         field: 'date_created',
