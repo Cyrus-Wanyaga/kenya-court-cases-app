@@ -5,4 +5,6 @@ const advocateRouter: Router = Router();
 
 advocateRouter.get('/', AdvocateController.getAllAdvocates);
 
+advocateRouter.get('/advocateCasesCount', AdvocateController.getAdvocateCaseCount);
+
 export default advocateRouter;
