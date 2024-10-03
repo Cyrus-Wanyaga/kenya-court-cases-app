@@ -532,114 +532,114 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 console.log("-----------------------------------------------------");
                 console.log(JSON.stringify(advocateIds));
                 console.log("-----------------------------------------------------");
+            }
 
-                let caseInstance = await Case.findOne({ where: { title: caseMetaData_.title } });
-                let wasCreated;
+            let caseInstance = await Case.findOne({ where: { title: caseMetaData_.title } });
+            let wasCreated;
 
-                if (!caseInstance) {
-                    console.log(`Judge does not exist ... creating`);
-                    caseInstance = await Case.create({
-                        title: caseMetaData_.title,
-                        caseNumber: caseMetaData_.caseNumber,
-                        parties: caseMetaData_.parties,
-                        dateDelivered: caseMetaData_.dateDelivered,
-                        caseClass: caseMetaData_.caseClass,
-                        courtId: caseMetaData_.court,
-                        dateCreated: new Date(),
-                        dateModified: new Date(),
-                        citation: caseMetaData_.citation
+            if (!caseInstance) {
+                console.log(`Judge does not exist ... creating`);
+                caseInstance = await Case.create({
+                    title: caseMetaData_.title,
+                    caseNumber: caseMetaData_.caseNumber,
+                    parties: caseMetaData_.parties,
+                    dateDelivered: caseMetaData_.dateDelivered,
+                    caseClass: caseMetaData_.caseClass,
+                    courtId: caseMetaData_.court,
+                    dateCreated: new Date(),
+                    dateModified: new Date(),
+                    citation: caseMetaData_.citation
+                });
+
+                console.log(`Created case with id : ${caseInstance.id}`);
+            }
+
+            if (!caseInstance) {
+                wasCreated = false;
+            } else {
+                wasCreated = true;
+            }
+
+            if (wasCreated) {
+                console.log(`Created case title ${caseInstance.get('title')} successfully`);
+            } else {
+                console.log(`Failed to create case title ${caseInstance.get('title')}`);
+            }
+
+            if (judgeIds.length > 0 && caseInstance) {
+                for (const judgeId of judgeIds) {
+                    let caseJudgeWasCreated: boolean;
+                    let caseJudgeInstance: CaseJudge | null = await CaseJudge.findOne({
+                        where: {
+                            [Op.and]: [
+                                { judgeId: { [Op.eq]: judgeId } },
+                                { caseId: { [Op.eq]: caseInstance.id } }
+                            ]
+                        }
                     });
 
-                    console.log(`Created case with id : ${caseInstance.id}`);
-                }
-
-                if (!caseInstance) {
-                    wasCreated = false;
-                } else {
-                    wasCreated = true;
-                }
-
-                if (wasCreated) {
-                    console.log(`Created case title ${caseInstance.get('title')} successfully`);
-                } else {
-                    console.log(`Failed to create case title ${caseInstance.get('title')}`);
-                }
-
-                if (judgeIds.length > 0 && caseInstance) {
-                    for (const judgeId of judgeIds) {
-                        let caseJudgeWasCreated: boolean;
-                        let caseJudgeInstance: CaseJudge | null = await CaseJudge.findOne({
-                            where: {
-                                [Op.and]: [
-                                    { judgeId: { [Op.eq]: judgeId } },
-                                    { caseId: { [Op.eq]: caseInstance.id } }
-                                ]
-                            }
+                    if (!caseJudgeInstance) {
+                        caseJudgeInstance = await CaseJudge.create({
+                            judgeId: judgeId,
+                            caseId: caseInstance.id
                         });
 
-                        if (!caseJudgeInstance) {
-                            caseJudgeInstance = await CaseJudge.create({
-                                judgeId: judgeId,
-                                caseId: caseInstance.id
-                            });
+                        caseJudgeWasCreated = true;
+                        console.log(`CaseJudge record created : ${JSON.stringify(caseJudgeInstance)}`);
+                    } else {
+                        console.log(`CaseJudge instance already exists`);
+                        caseJudgeWasCreated = false;
+                        // continue;
+                    }
 
-                            caseJudgeWasCreated = true;
-                            console.log(`CaseJudge record created : ${JSON.stringify(caseJudgeInstance)}`);
+                    if (!caseJudgeWasCreated && (!caseJudgeInstance || caseJudgeInstance === null || caseJudgeInstance === undefined)) {
+                        console.log(`Failed to create case judge record`);
+                    } else {
+                        if (caseJudgeInstance && caseJudgeWasCreated) {
+                            console.log(`Case judge instance was created successfully with id ${caseJudgeInstance.id}`);
+                        } else if (caseJudgeInstance && !caseJudgeWasCreated) {
+                            console.log(`Case judge record was already existant with id ${caseJudgeInstance.id}`);
                         } else {
-                            console.log(`CaseJudge instance already exists`);
-                            caseJudgeWasCreated = false;
-                            // continue;
-                        }
-
-                        if (!caseJudgeWasCreated && (!caseJudgeInstance || caseJudgeInstance === null || caseJudgeInstance === undefined)) {
-                            console.log(`Failed to create case judge record`);
-                        } else {
-                            if (caseJudgeInstance && caseJudgeWasCreated) {
-                                console.log(`Case judge instance was created successfully with id ${caseJudgeInstance.id}`);
-                            } else if (caseJudgeInstance && !caseJudgeWasCreated) {
-                                console.log(`Case judge record was already existant with id ${caseJudgeInstance.id}`);
-                            } else {
-                                console.log(`Error. Case judge record not created.`);
-                            }
+                            console.log(`Error. Case judge record not created.`);
                         }
                     }
                 }
+            }
 
-                if (advocateIds.length > 0 && caseInstance) {
-                    for (const advocateId of advocateIds) {
-                        let caseAdvocateWasCreated: boolean;
-                        let caseAdvocateInstance: CaseAdvocate | null = await CaseAdvocate.findOne({
-                            where: {
-                                [Op.and]: [
-                                    { advocateId: { [Op.eq]: advocateId } },
-                                    { caseId: { [Op.eq]: caseInstance.id } }
-                                ]
-                            }
+            if (advocateIds.length > 0 && caseInstance) {
+                for (const advocateId of advocateIds) {
+                    let caseAdvocateWasCreated: boolean;
+                    let caseAdvocateInstance: CaseAdvocate | null = await CaseAdvocate.findOne({
+                        where: {
+                            [Op.and]: [
+                                { advocateId: { [Op.eq]: advocateId } },
+                                { caseId: { [Op.eq]: caseInstance.id } }
+                            ]
+                        }
+                    });
+
+                    if (!caseAdvocateInstance) {
+                        caseAdvocateInstance = await CaseAdvocate.create({
+                            advocateId: advocateId,
+                            caseId: caseInstance.id
                         });
 
-                        if (!caseAdvocateInstance) {
-                            caseAdvocateInstance = await CaseAdvocate.create({
-                                advocateId: advocateId,
-                                caseId: caseInstance.id
-                            });
+                        caseAdvocateWasCreated = true;
+                        console.log(`CaseAdvocate record created : ${JSON.stringify(caseAdvocateInstance)}`);
+                    } else {
+                        console.log(`CaseJudge instance already exists`);
+                        caseAdvocateWasCreated = false;
+                    }
 
-                            caseAdvocateWasCreated = true;
-                            console.log(`CaseAdvocate record created : ${JSON.stringify(caseAdvocateInstance)}`);
+                    if (!caseAdvocateWasCreated && (!caseAdvocateInstance || caseAdvocateInstance === null || caseAdvocateInstance === undefined)) {
+                        console.log(`Failed to create case advocate record`);
+                    } else {
+                        if (caseAdvocateInstance && caseAdvocateWasCreated) {
+                            console.log(`Case advocate instance was created successfully`);
+                        } else if (caseAdvocateInstance && !caseAdvocateWasCreated) {
+                            console.log(`Case advocate record was alreay existant with id ${caseAdvocateInstance.id}`);
                         } else {
-                            console.log(`CaseJudge instance already exists`);
-                            caseAdvocateWasCreated = false;
-                        }
-
-                        if (!caseAdvocateWasCreated && (!caseAdvocateInstance || caseAdvocateInstance === null || caseAdvocateInstance === undefined)) {
-                            console.log(`Failed to create case advocate record`);
-                        } else {
-                            if (caseAdvocateInstance && caseAdvocateWasCreated) {
-                                console.log(`Case advocate instance was created successfully`);
-                            } else if (caseAdvocateInstance && !caseAdvocateWasCreated) {
-                                console.log(`Case advocate record was alreay existant with id ${caseAdvocateInstance.id}`);
-                            } else {
-                                console.log(`Error. Case advocate record not created.`);
-                            }
+                            console.log(`Error. Case advocate record not created.`);
                         }
                     }
                 }
