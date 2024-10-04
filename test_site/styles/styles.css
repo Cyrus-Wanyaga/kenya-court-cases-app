@@ -1,0 +1,8 @@
+body, html {
+    margin: 0 !important;
+    font-family: "Afacad Flux", sans-serif;
+}
+
+.chartData {
+    width: 800px;
+}
