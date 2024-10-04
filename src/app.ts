@@ -4,6 +4,7 @@ import cors from 'cors';
 import { Worker } from 'node:worker_threads';
 import sequelize from './middleware/sequelize.js';
 import advocateRouter from './routes/AdvocateRoutes.js';
+import caseRouter from './routes/CaseRoutes.js';
 import { setupAssociations } from './setupAssociations.js';
 
 const app: Application = express();
@@ -12,6 +13,7 @@ app.use(bodyParser.json());
 app.use(cors());
 
 app.use('/api/advocate', advocateRouter);
+app.use('/api/case', caseRouter);
 
 app.get('/', (req: Request, resp: Response) => {
     resp.json({ statusMessage: "Hello World!" });
