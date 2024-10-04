@@ -4,6 +4,7 @@ import sequelize from "../middleware/sequelize.js";
 interface AdvocateAttributes {
     id: number;
     name: string;
+    type: string;
     dateCreated: Date;
     dateModified: Date;
 }
@@ -13,6 +14,7 @@ interface AdvocateCreationAttributes extends Optional<AdvocateAttributes, 'id'> 
 class Advocate extends Model<AdvocateAttributes, AdvocateCreationAttributes> implements AdvocateAttributes {
     public id!: number;
     public name!: string;
+    public type!: string;
     public dateCreated!: Date;
     public dateModified!: Date;
 
@@ -30,6 +32,11 @@ Advocate.init({
     name: {
         type: DataTypes.STRING(255),
         allowNull: false
+    },
+    type: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        field: 'type'
     },
     dateCreated: {
         type: DataTypes.DATE,
