@@ -1,24 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kenya Court Cases App</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="../../public/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Afacad+Flux:wght@100..1000&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles/styles.css">
+    <!-- <link rel="stylesheet" href="./styles/styles.css"> -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" type="text/javascript" ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" type="text/javascript"></script>
+    <script src="https://unpkg.com/universal-router/universal-router.min.js"></script>
+    <!-- <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script> -->
 </head>
-
 <body>
-    <div x-data="chartData" class="chartData">
-        <canvas id="caseByDateCountChart"></canvas>
-        <button @click="refreshData">Refresh Data</button>
+    <div id="app">
+        <!-- <div x-html="getContent()"></div> -->
     </div>
-    <script src="./index.js" type="text/javascript"></script>
+    <!-- <script src="./bundle.js" type="text/javascript"></script> -->
 </body>
-
 </html>
