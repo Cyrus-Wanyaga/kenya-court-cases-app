@@ -476,6 +476,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         .replace(/\bSC\b/g, "")
                         .replace(/State Counsel/gi, "")
                         .replace(/\bCounsel\b/gi, "")
+                        .replace(regex, "")
                         .trim();
                 }
 
@@ -487,8 +488,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         // Split by comma, but not within a name or company name
                         let parts = section.split(/,\s*(?=(?:[A-Z][a-z]+\s+|[A-Z]+\s*&))/);
 
-                        return parts.map(part => {
-                            part = part.replaceAll(regex, "");
+                        return parts.map(part => {                            
                             part = part.trim();
                             if (part.match(/^(Mr\.|Mrs\.|Ms\.|Dr\.)/)) {
                                 // Individual advocate with title
@@ -570,9 +570,11 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 console.log(`Created case title ${caseInstance.get('title')} successfully`);
             } else {
                 console.log(`Failed to create case title ${caseInstance.get('title')}`);
+                return;
             }
 
-            if (judgeIds.length > 0 && caseInstance) {
+            if (judgeIds.length > 0 && wasCreated && caseInstance) {
+                console.log(`Case jugdes exist. Attempt to create`);
                 for (const judgeId of judgeIds) {
                     let caseJudgeWasCreated: boolean;
                     let caseJudgeInstance: CaseJudge | null = await CaseJudge.findOne({
@@ -612,7 +614,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 }
             }
 
-            if (advocateIds.length > 0 && caseInstance) {
+            if (advocateIds.length > 0 && wasCreated && caseInstance) {
+                console.log(`Case advocates exist. Attempt to create`);
                 for (const advocateId of advocateIds) {
                     let caseAdvocateWasCreated: boolean;
                     let caseAdvocateInstance: CaseAdvocate | null = await CaseAdvocate.findOne({
