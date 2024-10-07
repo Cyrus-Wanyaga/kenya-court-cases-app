@@ -443,7 +443,15 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
 
                 let advocatesString: string = "";
                 advocatesString = caseMetaData_.advocates;
+                interface AdvocateObj {
+                    name: string;
+                    type: 'individual' | 'company';
+                }
 
+                let advocatesString: string = "";
+                advocatesString = caseMetaData_.advocates;
+
+                const createAdvocate = async (advocateName: string, type: string): Promise<{ advocateObj: Advocate, created: boolean, id: number }> => {
                 const createAdvocate = async (advocateName: string, type: string): Promise<{ advocateObj: Advocate, created: boolean, id: number }> => {
                     const sanitizedName = advocateName.trim().replace(/\s+/g, ' ').normalize('NFC');
                     console.log(`Attempting to create advocate ${sanitizedName}`);
@@ -454,6 +462,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         console.log(`Advocate does not exist ... creating`);
                         advocateInstance = await Advocate.create({
                             name: sanitizedName,
+                            type: type,
                             type: type,
                             dateCreated: new Date(),
                             dateModified: new Date()
@@ -476,6 +485,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         .replace(/\bSC\b/g, "")
                         .replace(/State Counsel/gi, "")
                         .replace(/\bCounsel\b/gi, "")
+                        .replace(regex, "")
                         .trim();
                 }
 
@@ -487,8 +497,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         // Split by comma, but not within a name or company name
                         let parts = section.split(/,\s*(?=(?:[A-Z][a-z]+\s+|[A-Z]+\s*&))/);
 
-                        return parts.map(part => {
-                            part = part.replaceAll(regex, "");
+                        return parts.map(part => {                            
                             part = part.trim();
                             if (part.match(/^(Mr\.|Mrs\.|Ms\.|Dr\.)/)) {
                                 // Individual advocate with title
@@ -539,7 +548,10 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 console.log(JSON.stringify(advocateIds));
                 console.log("-----------------------------------------------------");
             }
+            }
 
+            let caseInstance = await Case.findOne({ where: { title: caseMetaData_.title } });
+            let wasCreated;
             let caseInstance = await Case.findOne({ where: { title: caseMetaData_.title } });
             let wasCreated;
 
@@ -556,10 +568,30 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     dateModified: new Date(),
                     citation: caseMetaData_.citation
                 });
+            if (!caseInstance) {
+                console.log(`Case does not exist ... creating`);
+                caseInstance = await Case.create({
+                    title: caseMetaData_.title,
+                    caseNumber: caseMetaData_.caseNumber,
+                    parties: caseMetaData_.parties,
+                    dateDelivered: caseMetaData_.dateDelivered,
+                    caseClass: caseMetaData_.caseClass,
+                    courtId: caseMetaData_.court,
+                    dateCreated: new Date(),
+                    dateModified: new Date(),
+                    citation: caseMetaData_.citation
+                });
 
                 console.log(`Created case with id : ${caseInstance.id}`);
             }
+                console.log(`Created case with id : ${caseInstance.id}`);
+            }
 
+            if (!caseInstance) {
+                wasCreated = false;
+            } else {
+                wasCreated = true;
+            }
             if (!caseInstance) {
                 wasCreated = false;
             } else {
@@ -570,9 +602,11 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 console.log(`Created case title ${caseInstance.get('title')} successfully`);
             } else {
                 console.log(`Failed to create case title ${caseInstance.get('title')}`);
+                return;
             }
 
-            if (judgeIds.length > 0 && caseInstance) {
+            if (judgeIds.length > 0 && wasCreated && caseInstance) {
+                console.log(`Case jugdes exist. Attempt to create`);
                 for (const judgeId of judgeIds) {
                     let caseJudgeWasCreated: boolean;
                     let caseJudgeInstance: CaseJudge | null = await CaseJudge.findOne({
@@ -612,7 +646,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 }
             }
 
-            if (advocateIds.length > 0 && caseInstance) {
+            if (advocateIds.length > 0 && wasCreated && caseInstance) {
+                console.log(`Case advocates exist. Attempt to create`);
                 for (const advocateId of advocateIds) {
                     let caseAdvocateWasCreated: boolean;
                     let caseAdvocateInstance: CaseAdvocate | null = await CaseAdvocate.findOne({
