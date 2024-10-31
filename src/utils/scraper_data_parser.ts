@@ -444,7 +444,15 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
 
                 let advocatesString: string = "";
                 advocatesString = caseMetaData_.advocates;
+                interface AdvocateObj {
+                    name: string;
+                    type: 'individual' | 'company';
+                }
 
+                let advocatesString: string = "";
+                advocatesString = caseMetaData_.advocates;
+
+                const createAdvocate = async (advocateName: string, type: string): Promise<{ advocateObj: Advocate, created: boolean, id: number }> => {
                 const createAdvocate = async (advocateName: string, type: string): Promise<{ advocateObj: Advocate, created: boolean, id: number }> => {
                     const sanitizedName = advocateName.trim().replace(/\s+/g, ' ').normalize('NFC');
                     console.log(`Attempting to create advocate ${sanitizedName}`);
@@ -455,6 +463,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         console.log(`Advocate does not exist ... creating`);
                         advocateInstance = await Advocate.create({
                             name: sanitizedName,
+                            type: type,
                             type: type,
                             dateCreated: new Date(),
                             dateModified: new Date()
@@ -540,7 +549,10 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 console.log(JSON.stringify(advocateIds));
                 console.log("-----------------------------------------------------");
             }
+            }
 
+            let caseInstance = await Case.findOne({ where: { title: caseMetaData_.title } });
+            let wasCreated;
             let caseInstance = await Case.findOne({ where: { title: caseMetaData_.title } });
             let wasCreated;
 
@@ -558,10 +570,30 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     dateModified: new Date(),
                     citation: caseMetaData_.citation
                 });
+            if (!caseInstance) {
+                console.log(`Case does not exist ... creating`);
+                caseInstance = await Case.create({
+                    title: caseMetaData_.title,
+                    caseNumber: caseMetaData_.caseNumber,
+                    parties: caseMetaData_.parties,
+                    dateDelivered: caseMetaData_.dateDelivered,
+                    caseClass: caseMetaData_.caseClass,
+                    courtId: caseMetaData_.court,
+                    dateCreated: new Date(),
+                    dateModified: new Date(),
+                    citation: caseMetaData_.citation
+                });
 
                 console.log(`Created case with id : ${caseInstance.id}`);
             }
+                console.log(`Created case with id : ${caseInstance.id}`);
+            }
 
+            if (!caseInstance) {
+                wasCreated = false;
+            } else {
+                wasCreated = true;
+            }
             if (!caseInstance) {
                 wasCreated = false;
             } else {

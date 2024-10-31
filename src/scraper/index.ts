@@ -414,8 +414,9 @@ const scrapeCases = async (): Promise<void> => {
                 console.log(`Moved to the results page`);
 
                 let navigateToNextPage = true;
+                let counter = 0;
  
-                while (navigateToNextPage) {
+                while (counter < 20) {
                     const evaluateCourtTypeResultsPage = async (page: Page) => {
                         const currentPageLinks = await page.evaluate(() => {
                             const links: string[] = [];
@@ -511,6 +512,7 @@ const scrapeCases = async (): Promise<void> => {
                         await courtTypePage.waitForNavigation({ waitUntil: "networkidle2" });
 
                         console.log("Moved to next page");
+                        counter++;
                     }
                 }
             } catch (err) {
