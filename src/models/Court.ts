@@ -5,6 +5,7 @@ interface CourtAttributes {
     id: number;
     courtName: string;
     type: string;
+    category: number;
     countyId: number;
     dateCreated: Date;
     dateModified: Date;
@@ -16,6 +17,7 @@ class Court extends Model<CourtAttributes, CourtCreationAttributes> implements C
     public id!: number;
     public courtName!: string;
     public type!: string;
+    public category!: number;
     public countyId!: number;
     public dateCreated!: Date;
     public dateModified!: Date;
@@ -40,6 +42,10 @@ Court.init({
     type: {
         type: DataTypes.STRING(255),
         allowNull: false
+    },
+    category: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     },
     countyId: {
         type: DataTypes.INTEGER,

@@ -1,6 +1,6 @@
 import { parentPort } from "worker_threads";
 import puppeteer, { Page, Browser, ElementHandle } from "puppeteer";
-import { createCounties, createCourts, createCases } from "../utils/scraper_data_parser.js";
+import { createCounties, createCourts, createCases, createCourtCategories } from "../utils/scraper_data_parser.js";
 import { initialRunChecker, updateInitialRunValue } from "../utils/initial_run_checker.js";
 
 const viewPortConfig = {
@@ -110,7 +110,7 @@ const scrapeCases = async (): Promise<void> => {
             return;
         }
 
-        await navigeToPage(page, "https://www.kenyalaw.org/caselaw");
+        await navigeToPage(page, "https://new.kenyalaw.org/judgments/");
 
         const evaluateInitialRunStartPage = async (page: Page) => {
             const courtTypeLinks = await page.evaluate(() => {
@@ -141,7 +141,42 @@ const scrapeCases = async (): Promise<void> => {
             return courtTypeLinks;
         }
 
+        const evaluateCourtCategories = async (page: Page) => {
+            const courtCategories = await page.evaluate(() => {
+                const courtCategoriesArray: string[] = [];
+                const divElements = document.querySelectorAll(".flow-columns-group > h4");
+
+                if (!divElements) {
+                    return [];
+                }
+
+                divElements.forEach((div) => {
+                    const courtCategory: string | null = div.textContent;
+                    if (courtCategory) {
+                        courtCategoriesArray.push(courtCategory);
+                    }
+                });
+
+                return courtCategoriesArray;
+            });
+
+            return courtCategories;
+        }
+
         const courtTypeLinks = await waitForSelectorsAndEvaluatePage(page, "ul > li > a", evaluateInitialRunStartPage);
+        const courtCategories = await waitForSelectorsAndEvaluatePage(page, [".flow-columns-group", ".mb-4"], evaluateCourtCategories);
+
+        if (!courtCategories || courtCategories.length === 0) {
+            console.log(`No court categories found`);
+            return;
+        }
+
+        const createCourtCategoriesResult = await createCourtCategories(courtCategories);
+
+        if (!createCourtCategoriesResult) {
+            console.log(`Failed to create court categories`);
+            return;
+        }
 
         if (!courtTypeLinks) {
             console.log(`Failed to return links`);
@@ -187,17 +222,6 @@ const scrapeCases = async (): Promise<void> => {
                             }
                         }
                     }
-
-                    // const postLinks = document.querySelectorAll(".post");
-
-                    // for (const postLink of postLinks) {
-                    //     const readMoreLink = postLink.querySelector(".show-more");
-                    //     const readMoreHref = readMoreLink?.getAttribute("href");
-
-                    //     if (readMoreHref) {
-                    //         currentPageIndexAndLink.links.push(readMoreHref);
-                    //     }
-                    // }
 
                     return currentPageIndexAndLink;
                 });
@@ -415,7 +439,7 @@ const scrapeCases = async (): Promise<void> => {
 
                 let navigateToNextPage = true;
                 let counter = 0;
- 
+
                 while (counter < 20) {
                     const evaluateCourtTypeResultsPage = async (page: Page) => {
                         const currentPageLinks = await page.evaluate(() => {
@@ -508,7 +532,7 @@ const scrapeCases = async (): Promise<void> => {
                         await courtTypePage.$eval(`.next a`, element =>
                             (element as HTMLElement).click()
                         );
-                        
+
                         await courtTypePage.waitForNavigation({ waitUntil: "networkidle2" });
 
                         console.log("Moved to next page");

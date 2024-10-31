@@ -1,4 +1,4 @@
-import { County, Court, Case, Judge, CaseJudge, Advocate, CaseAdvocate } from "../models/index.js";
+import { County, Court, Case, Judge, CaseJudge, Advocate, CaseAdvocate, CourtCategory } from "../models/index.js";
 import sequelize from "../middleware/sequelize.js";
 import { Op } from "sequelize";
 
@@ -31,6 +31,56 @@ const parseCourtStringToSensibleData = (court: string): void => {
     }
 }
 
+export const createCourtCategories = async (categories: string[]): Promise<boolean> => {
+    let returnVal: boolean = false;
+    if (categories && categories.length > 0) {
+        let transaction = await sequelize.transaction();
+
+        for (const categeory of categories) {
+            try {
+                let categoryInstance: CourtCategory | null = await CourtCategory.findOne({
+                    where: {
+                        category: categeory
+                    }
+                });
+
+                if (categoryInstance) {
+                    console.log(`Court category ${categoryInstance.get('category')} already exists with id ${categoryInstance.get('id')}`);
+                    returnVal = true;
+                    continue;
+                }
+
+                categoryInstance = await CourtCategory.create({
+                    category: categeory,
+                    dateCreated: new Date(),
+                    dateModified: new Date()
+                }, {
+                    transaction: transaction
+                });
+
+                if (!categoryInstance) {
+                    console.log(`Failed to create court category : ${categeory}`);
+                    returnVal = false;
+                    break;
+                } else {
+                    console.log(`Created court category with id ${categoryInstance.id}`);
+                    returnVal = true;
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        }
+
+        if (!returnVal) {
+            await transaction.rollback();
+        } else {
+            await transaction.commit();
+        }
+    }
+
+    return returnVal;
+}
+
 export const createCourts = async (courts: any): Promise<boolean> => {
     let returnVal: boolean = false;
     if (courts) {
@@ -59,6 +109,7 @@ export const createCourts = async (courts: any): Promise<boolean> => {
                             defaults: {
                                 courtName,
                                 type,
+                                category: 0,
                                 countyId: existingCounty?.get('id') || 0,
                                 dateCreated: new Date(),
                                 dateModified: new Date()
@@ -107,6 +158,7 @@ export const createCourts = async (courts: any): Promise<boolean> => {
                             defaults: {
                                 courtName,
                                 type,
+                                category: 0,
                                 countyId: 0,
                                 dateCreated: new Date(),
                                 dateModified: new Date()
@@ -328,8 +380,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
             citation: citation,
             court: court,
             judges: judges,
-            advocates: advocates,
-            caseAction: caseAction
+            advocates: advocates
         }
     }
 
@@ -444,15 +495,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
 
                 let advocatesString: string = "";
                 advocatesString = caseMetaData_.advocates;
-                interface AdvocateObj {
-                    name: string;
-                    type: 'individual' | 'company';
-                }
 
-                let advocatesString: string = "";
-                advocatesString = caseMetaData_.advocates;
-
-                const createAdvocate = async (advocateName: string, type: string): Promise<{ advocateObj: Advocate, created: boolean, id: number }> => {
                 const createAdvocate = async (advocateName: string, type: string): Promise<{ advocateObj: Advocate, created: boolean, id: number }> => {
                     const sanitizedName = advocateName.trim().replace(/\s+/g, ' ').normalize('NFC');
                     console.log(`Attempting to create advocate ${sanitizedName}`);
@@ -463,7 +506,6 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         console.log(`Advocate does not exist ... creating`);
                         advocateInstance = await Advocate.create({
                             name: sanitizedName,
-                            type: type,
                             type: type,
                             dateCreated: new Date(),
                             dateModified: new Date()
@@ -486,7 +528,6 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         .replace(/\bSC\b/g, "")
                         .replace(/State Counsel/gi, "")
                         .replace(/\bCounsel\b/gi, "")
-                        .replace(regex, "")
                         .trim();
                 }
 
@@ -498,7 +539,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                         // Split by comma, but not within a name or company name
                         let parts = section.split(/,\s*(?=(?:[A-Z][a-z]+\s+|[A-Z]+\s*&))/);
 
-                        return parts.map(part => {                            
+                        return parts.map(part => {
+                            part = part.replaceAll(regex, "");
                             part = part.trim();
                             if (part.match(/^(Mr\.|Mrs\.|Ms\.|Dr\.)/)) {
                                 // Individual advocate with title
@@ -549,27 +591,10 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 console.log(JSON.stringify(advocateIds));
                 console.log("-----------------------------------------------------");
             }
-            }
 
             let caseInstance = await Case.findOne({ where: { title: caseMetaData_.title } });
             let wasCreated;
-            let caseInstance = await Case.findOne({ where: { title: caseMetaData_.title } });
-            let wasCreated;
 
-            if (!caseInstance) {
-                console.log(`Case does not exist ... creating`);
-                caseInstance = await Case.create({
-                    title: caseMetaData_.title,
-                    caseNumber: caseMetaData_.caseNumber,
-                    parties: caseMetaData_.parties,
-                    dateDelivered: caseMetaData_.dateDelivered,
-                    caseClass: caseMetaData_.caseClass,
-                    courtId: caseMetaData_.court,
-                    caseAction: caseMetaData_.caseAction,
-                    dateCreated: new Date(),
-                    dateModified: new Date(),
-                    citation: caseMetaData_.citation
-                });
             if (!caseInstance) {
                 console.log(`Case does not exist ... creating`);
                 caseInstance = await Case.create({
@@ -586,14 +611,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
 
                 console.log(`Created case with id : ${caseInstance.id}`);
             }
-                console.log(`Created case with id : ${caseInstance.id}`);
-            }
 
-            if (!caseInstance) {
-                wasCreated = false;
-            } else {
-                wasCreated = true;
-            }
             if (!caseInstance) {
                 wasCreated = false;
             } else {
@@ -604,11 +622,9 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 console.log(`Created case title ${caseInstance.get('title')} successfully`);
             } else {
                 console.log(`Failed to create case title ${caseInstance.get('title')}`);
-                return;
             }
 
-            if (judgeIds.length > 0 && wasCreated && caseInstance) {
-                console.log(`Case jugdes exist. Attempt to create`);
+            if (judgeIds.length > 0 && caseInstance) {
                 for (const judgeId of judgeIds) {
                     let caseJudgeWasCreated: boolean;
                     let caseJudgeInstance: CaseJudge | null = await CaseJudge.findOne({
@@ -648,8 +664,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                 }
             }
 
-            if (advocateIds.length > 0 && wasCreated && caseInstance) {
-                console.log(`Case advocates exist. Attempt to create`);
+            if (advocateIds.length > 0 && caseInstance) {
                 for (const advocateId of advocateIds) {
                     let caseAdvocateWasCreated: boolean;
                     let caseAdvocateInstance: CaseAdvocate | null = await CaseAdvocate.findOne({
