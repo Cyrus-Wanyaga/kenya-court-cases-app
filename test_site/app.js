@@ -1,32 +1,28 @@
-import { HomePage } from "./js/pages/index.js";
+import { HomePage, Advocate, Judge, NotFound, County } from "./js/pages/index.js";
 import './styles/styles.css';
 
 let appDiv = document.getElementById("app");
 
-// const root = ReactDOM.createRoot(appDiv);
-// root.render(
-//   <React.StrictMode>
-//     <HomePage />
-//   </React.StrictMode>
-// );
-
 const routes = [
     { path: '/', action: () => HomePage() },
-    { path: '/about', action: () => console.log('About Page Content') }
+    { path: '/advocates', action: () => Advocate() },
+    { path: '/judges', action: () => Judge() },
+    { path: '/counties', action: () => County() },
 ];
 
 const router = new UniversalRouter(routes);
 
 function handleRouting() {
-    const path = window.location.hash.slice(1) || '/';
+    const path = window.location.pathname || '/';
     console.log('Path is : ', path);
 
     console.log('Router : ', router);
+
     router.resolve({ pathname: path })
         .then(content => {
             appDiv.innerHTML = content;
         }).catch(error => {
-            appDiv.innerHTML = '404 - Page Not Found';
+            appDiv.innerHTML = NotFound();
         });
 }
 
@@ -42,26 +38,3 @@ document.addEventListener('click', function (event) {
 });
 
 handleRouting();
-
-/**
-import { HomePage } from "./js/pages/index.js";
-
-const routes = {
-    '/': () => HomePage(),  // Call the HomePage function to get the HTML
-    '/about': () => '<h1>This is the About Page</h1>', // Example for the About page
-};
-
-document.addEventListener('alpine:init', () => {
-    Alpine.data('router', () => ({
-        init() {
-            console.log("Router Initialized");  // This should work now
-        },
-        currentRoute: window.location.hash.slice(1) || '/',
-        
-        getContent() {
-            const routeFunction = routes[this.currentRoute] || (() => '<h1>404 - Page Not Found</h1>');
-            return routeFunction();  // Call the function to get the HTML
-        }
-    }));
-});
- */

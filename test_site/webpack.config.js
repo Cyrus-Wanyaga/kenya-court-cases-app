@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
     entry: './app.js', // Your main JavaScript file
@@ -17,14 +18,22 @@ module.exports = {
                 use: {
                     loader: 'babel-loader', // If using Babel
                     options: {
-                        presets: ['@babel/preset-env']
+                        presets: ['@babel/preset-env'],
+                        plugins: ['@babel/plugin-syntax-jsx']
                     },
                 },
             },
             {
                 test: /\.css$/,
                 use: ['style-loader', 'css-loader']
-            }
+            },
+            {
+                test: /\.(png|svg|jpg|jpeg|gif)$/i,
+                type: 'asset/resource',
+                generator: {
+                  filename: 'assets/[name][ext]'
+                }
+              }
         ],
     },
     plugins: [
@@ -32,10 +41,15 @@ module.exports = {
             template: './index.html', // Path to your HTML file
             inject: 'head', // Inject all scripts into the body
         }),
+        new CopyWebpackPlugin({
+            patterns: [
+              { from: 'assets', to: 'assets' }
+            ],
+          }),
     ],
     devServer: {
         static: {
-            directory: path.join(__dirname, 'public')
+            directory: path.join(__dirname, 'dist')
         },
         // path.join(__dirname, 'dist'), // Serve files from the dist directory
         compress: true,
