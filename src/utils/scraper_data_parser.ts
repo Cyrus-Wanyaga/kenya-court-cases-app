@@ -328,7 +328,8 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
             citation: citation,
             court: court,
             judges: judges,
-            advocates: advocates
+            advocates: advocates,
+            caseAction: caseAction
         }
     }
 
@@ -552,6 +553,7 @@ export const createCases = async (caseHeaderAndValueObjects: any) => {
                     dateDelivered: caseMetaData_.dateDelivered,
                     caseClass: caseMetaData_.caseClass,
                     courtId: caseMetaData_.court,
+                    caseAction: caseMetaData_.caseAction,
                     dateCreated: new Date(),
                     dateModified: new Date(),
                     citation: caseMetaData_.citation
