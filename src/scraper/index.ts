@@ -144,14 +144,14 @@ const scrapeCases = async (): Promise<void> => {
         const evaluateCourtCategories = async (page: Page) => {
             const courtCategories = await page.evaluate(() => {
                 const courtCategoriesArray: string[] = [];
-                const divElements = document.querySelectorAll(".flow-columns-group > h4");
+                const h4Elements = document.querySelectorAll(".flow-columns-group > h4");
 
-                if (!divElements) {
+                if (!h4Elements) {
                     return [];
                 }
 
-                divElements.forEach((div) => {
-                    const courtCategory: string | null = div.textContent;
+                h4Elements.forEach((h4) => {
+                    const courtCategory: string | null = h4.textContent;
                     if (courtCategory) {
                         courtCategoriesArray.push(courtCategory);
                     }
@@ -178,6 +178,49 @@ const scrapeCases = async (): Promise<void> => {
             return;
         }
 
+        const evaluateCourtTypes = async (page: Page) => {
+            const courtTypes = await page.evaluate(() => {
+                const courtTypes: {
+                    link: string,
+                    type: string
+                }[] = [];
+
+                const liElements = document.querySelectorAll("ul.list-unstyled > li");
+                console.log(`There are ${liElements.length} elements`);
+
+                if (!liElements || liElements.length === 0) {
+                    return [];
+                }
+
+                liElements.forEach((li) => {
+                    const a = li.querySelector("a");
+                    if (a) {
+                        const type = a?.href;
+                        const link = a?.innerHTML;
+                        if (type && link) {
+                            courtTypes.push({
+                                link: link,
+                                type: type
+                            });
+                        }
+                    }
+                });
+
+                return courtTypes;
+            });
+
+            return courtTypes;
+        };
+
+        const courtTypes = await waitForSelectorsAndEvaluatePage(page, ".list-unstyled", evaluateCourtTypes);
+
+        if (!courtTypes || courtTypes.length === 0) {
+            console.log(`No court types fetched`);
+            return;
+        }
+
+        console.log(`Fetched ${courtTypes.length} successfully`);
+        
         if (!courtTypeLinks) {
             console.log(`Failed to return links`);
             return;
