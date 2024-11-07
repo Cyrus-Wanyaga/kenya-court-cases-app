@@ -182,7 +182,7 @@ const scrapeCases = async (): Promise<void> => {
             const courtTypes = await page.evaluate(() => {
                 const courtTypes: {
                     link: string,
-                    type: string
+                    type: string,
                 }[] = [];
 
                 const liElements = document.querySelectorAll("ul.list-unstyled > li");
@@ -195,8 +195,8 @@ const scrapeCases = async (): Promise<void> => {
                 liElements.forEach((li) => {
                     const a = li.querySelector("a");
                     if (a) {
-                        const type = a?.href;
-                        const link = a?.innerHTML;
+                        const link = a?.href;
+                        const type = a?.innerHTML;
                         if (type && link) {
                             courtTypes.push({
                                 link: link,
@@ -220,7 +220,97 @@ const scrapeCases = async (): Promise<void> => {
         }
 
         console.log(`Fetched ${courtTypes.length} successfully`);
-        
+
+        for (const courtType of courtTypes) {
+            const courtTypePage = await createNewPage(browser);
+
+            if (!courtTypePage) {
+                return;
+            }
+
+            const linkToVisit = courtType.link;
+            console.log(`Visiting link: ${linkToVisit}`);
+            await navigeToPage(courtTypePage, linkToVisit);
+
+            const evaluateCourtTypePage = async (page: Page) => {
+                const courts = await page.evaluate(() => {
+                    const courtsArray: {
+                        courtObj: {
+                            link: string,
+                            court: string
+                        }[],
+                        courtCategory: string
+                    } = {
+                        courtObj: [],
+                        courtCategory: ""
+                    };
+
+                    const h1Element = document.querySelectorAll("h1");
+                    const liElements = document.querySelectorAll("ul.list-unstyled > li");
+                    console.log(`There are ${liElements.length} elements`);
+                    console.log(`Found ${h1Element.length} h1 elements`);
+
+                    if (!liElements || liElements.length === 0) {
+                        return [];
+                    }
+
+                    if (h1Element && h1Element.length > 0) {
+                        console.log(`There is a h1 element`);
+                        h1Element.forEach((h1) => {
+                            const courtCategory = h1.innerHTML;
+                            if (courtCategory) {
+                                courtsArray.courtCategory = courtCategory;
+                            }
+                        });
+                    }
+
+                    liElements.forEach((li) => {
+                        const a = li.querySelector("a");
+                        if (a) {
+                            const link = a?.href;
+                            const court = a?.innerHTML;
+                            if (court && link) {
+                                courtsArray.courtObj.push({
+                                    link: link,
+                                    court: court
+                                });
+                            }
+                        }
+                    });
+
+                    return courtsArray;
+                });
+
+                return courts;
+            }
+
+            const courtTypes = await waitForSelectorsAndEvaluatePage(courtTypePage, [".list-unstyled", "h1"], evaluateCourtTypePage);
+
+            if (!courtTypes || courtTypes.length === 0) {
+                console.log(`There are no court types`);
+                continue;
+            }
+
+            console.log(`Court types : ${JSON.stringify(courtTypes)} \n\n`);
+
+            const createCountiesResult = await createCounties(courtTypes.courtObj);
+
+            if (!createCountiesResult) {
+                console.log(`Failed to create counties`);
+            } else {
+                console.log(`Created counties`);
+            }
+
+            const createCourtsResult = await createCourts(courtTypes.courtObj, courtTypes.courtCategory);
+
+            if (!createCourtsResult) {
+                console.log(`Failed to create courts`);
+                return;
+            }
+
+            await closePage(courtTypePage);
+        }
+
         if (!courtTypeLinks) {
             console.log(`Failed to return links`);
             return;
@@ -284,13 +374,13 @@ const scrapeCases = async (): Promise<void> => {
                 return;
             }
 
-            const createCourtsResult = await createCourts(courtType_Links_And_PageIndex);
-            if (createCourtsResult) {
-                console.log(`Created courts successfully`);
-            } else {
-                console.log(`Failed to create courts`);
-                return;
-            }
+            // const createCourtsResult = await createCourts(courtType_Links_And_PageIndex);
+            // if (createCourtsResult) {
+            //     console.log(`Created courts successfully`);
+            // } else {
+            //     console.log(`Failed to create courts`);
+            //     return;
+            // }
 
             await closePage(courtTypePage);
         }

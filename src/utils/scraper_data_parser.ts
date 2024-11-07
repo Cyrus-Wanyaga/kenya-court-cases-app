@@ -81,122 +81,148 @@ export const createCourtCategories = async (categories: string[]): Promise<boole
     return returnVal;
 }
 
-export const createCourts = async (courts: any): Promise<boolean> => {
+export const createCourts = async (courts: any, courtType: string): Promise<boolean> => {
     let returnVal: boolean = false;
     if (courts) {
+        console.log(`Creating courts`);
         let transaction = await sequelize.transaction();
 
-        for (const court of courts.courts) {
-            parseCourtStringToSensibleData(court);
+        for (const court of courts) {
+            console.log(`Working with : ${JSON.stringify(court)}`);
+            console.log(`Court type is : ${courtType}`);
+            parseCourtStringToSensibleData(court.court);
 
-            const existingCounty = await County.findOne(
-                {
-                    where: {
-                        county: county
+            console.log(`Court name: ${courtName}, County: ${county}, Special court: ${specialCourt}, Type: ${type}`);
+            try {
+                console.log(`Before county find`);
+                const existingCounty = await County.findOne(
+                    {
+                        where: {
+                            county: county
+                        }
                     }
-                }
-            );
+                );
 
-            let courtCreateResult = undefined;
-            let existingCourt;
-            let created;
+                console.log(`Existing county : ${existingCounty}`);
 
-            if (!specialCourt && existingCounty !== null && existingCounty !== undefined && existingCounty.get('id') !== undefined) {
-                const courtCreateObj = async () => {
-                    if (courtName && courtName !== "") {
-                        const [courtInstance, wasCreated] = await Court.findOrCreate({
-                            where: { courtName },
-                            defaults: {
-                                courtName,
-                                type,
-                                category: 0,
-                                countyId: existingCounty?.get('id') || 0,
-                                dateCreated: new Date(),
-                                dateModified: new Date()
-                            },
-                            transaction: transaction
-                        });
-
-                        let courtCreateObj = {
-                            existingCourt: {} as Court,
-                            created: false as boolean
-                        };
-
-                        courtCreateObj.existingCourt = courtInstance;
-                        courtCreateObj.created = wasCreated;
-
-                        return courtCreateObj;
-                    } else {
-                        return undefined;
+                const courtCategory = await CourtCategory.findOne(
+                    {
+                        where: {
+                            category: courtType
+                        }
                     }
-                }
+                );
 
-                courtCreateResult = await courtCreateObj();
+                console.log(`Existing court category : ${courtCategory}`);
 
-                if (courtCreateResult) {
-                    existingCourt = courtCreateResult.existingCourt;
-                    created = courtCreateResult.created;
-                } else {
-                    returnVal = false;
-                    break;
-                }
+                let courtCreateResult = undefined;
+                let existingCourt;
+                let created;
 
-                if (created && existingCourt) {
-                    console.log(`Court ${courtName} created with ID : ${existingCourt.get('id')}`);
-                } else {
-                    console.log(`Court ${courtName} already exists with ID : ${existingCourt.get('id')}`);
-                }
+                if (!specialCourt && existingCounty !== null && existingCounty !== undefined && existingCounty.get('id') !== undefined) {
+                    console.log(`Creating a normal court`);
+                    const courtCreateObj = async () => {
+                        if (courtName && courtName !== "") {
+                            console.log(`Court name has a value: ${courtName}`);
+                            const [courtInstance, wasCreated] = await Court.findOrCreate({
+                                where: { courtName },
+                                defaults: {
+                                    courtName,
+                                    type,
+                                    category: courtCategory?.get('id') || 0,
+                                    countyId: existingCounty?.get('id') || 0,
+                                    dateCreated: new Date(),
+                                    dateModified: new Date()
+                                },
+                                transaction: transaction
+                            });
 
-                returnVal = true;
-            } else if (specialCourt) {
-                console.log(`Creating a special court type`);
+                            let courtCreateObj = {
+                                existingCourt: {} as Court,
+                                created: false as boolean
+                            };
 
-                const findOrCreateSpecialCourt = async () => {
-                    if (courtName && courtName !== "") {
-                        const [courtInstance, wasCreated] = await Court.findOrCreate({
-                            where: { courtName },
-                            defaults: {
-                                courtName,
-                                type,
-                                category: 0,
-                                countyId: 0,
-                                dateCreated: new Date(),
-                                dateModified: new Date()
-                            },
-                            transaction: transaction
-                        });
+                            courtCreateObj.existingCourt = courtInstance;
+                            courtCreateObj.created = wasCreated;
 
-                        let courtCreateObj = {
-                            existingCourt: {} as Court,
-                            created: false as boolean
-                        };
-
-                        courtCreateObj.existingCourt = courtInstance;
-                        courtCreateObj.created = wasCreated;
-
-                        return courtCreateObj;
-                    } else {
-                        return undefined;
+                            return courtCreateObj;
+                        } else {
+                            return undefined;
+                        }
                     }
-                };
 
-                courtCreateResult = await findOrCreateSpecialCourt();
+                    courtCreateResult = await courtCreateObj();
 
-                if (courtCreateResult) {
-                    existingCourt = courtCreateResult.existingCourt;
-                    created = courtCreateResult.created;
-
-                    if (created) {
-                        console.log(`Special court ${courtName} created with ID : ${existingCourt?.get('id')}`);
+                    if (courtCreateResult) {
+                        existingCourt = courtCreateResult.existingCourt;
+                        created = courtCreateResult.created;
                     } else {
-                        console.log(`Special court ${courtName} already exists with ID : ${existingCourt?.get('id')}`);
+                        returnVal = false;
+                        break;
+                    }
+
+                    if (created && existingCourt) {
+                        console.log(`Court ${courtName} created with ID : ${existingCourt.get('id')}`);
+                        returnVal = true;
+                    } else {
+                        console.log(`Court ${courtName} already exists with ID : ${existingCourt.get('id')}`);
+                        returnVal = true;
                     }
 
                     returnVal = true;
-                } else {
-                    returnVal = false;
-                    break;
+                } else if (specialCourt) {
+                    console.log(`Creating a special court type`);
+
+                    const findOrCreateSpecialCourt = async () => {
+                        if (courtName && courtName !== "") {
+                            console.log(`Court name for special court exists: ${courtName}`);
+                            const [courtInstance, wasCreated] = await Court.findOrCreate({
+                                where: { courtName },
+                                defaults: {
+                                    courtName,
+                                    type,
+                                    category: 0,
+                                    countyId: 0,
+                                    dateCreated: new Date(),
+                                    dateModified: new Date()
+                                },
+                                transaction: transaction
+                            });
+
+                            let courtCreateObj = {
+                                existingCourt: {} as Court,
+                                created: false as boolean
+                            };
+
+                            courtCreateObj.existingCourt = courtInstance;
+                            courtCreateObj.created = wasCreated;
+
+                            return courtCreateObj;
+                        } else {
+                            return undefined;
+                        }
+                    };
+
+                    courtCreateResult = await findOrCreateSpecialCourt();
+
+                    if (courtCreateResult) {
+                        existingCourt = courtCreateResult.existingCourt;
+                        created = courtCreateResult.created;
+
+                        if (created) {
+                            console.log(`Special court ${courtName} created with ID : ${existingCourt?.get('id')}`);
+                        } else {
+                            console.log(`Special court ${courtName} already exists with ID : ${existingCourt?.get('id')}`);
+                        }
+
+                        returnVal = true;
+                    } else {
+                        returnVal = false;
+                        break;
+                    }
                 }
+            } catch (err: any) {
+                console.log(`Error: ${err.stack}`);
             }
         }
 
@@ -216,13 +242,15 @@ export const createCounties = async (courts: any): Promise<boolean> => {
         const transaction = await sequelize.transaction();
         let returnVal: boolean = false;
 
-        for (const court of courts.courts) {
-            console.log(`Creating county : ${court}`);
+        for (const court of courts) {
+            console.log(`Creating county : ${JSON.stringify(court)}`);
             try {
-                parseCourtStringToSensibleData(court);
+                parseCourtStringToSensibleData(court.court);
 
+                console.log(`Court name: ${courtName}, County: ${county}, Special court: ${specialCourt}, Type: ${type}`);
                 const countyCreatedObj = async () => {
                     if (county && county !== "") {
+                        console.log(`County is not empty: ${county}`)
                         const [countyInstance, wasCreated] = await County.findOrCreate({
                             where: { county },
                             defaults: {
@@ -243,28 +271,37 @@ export const createCounties = async (courts: any): Promise<boolean> => {
                         countyCreatedObj.created = wasCreated;
                         return countyCreatedObj;
                     } else {
+                        console.log(`How does county not have a value: ${county}`);
                         return undefined;
                     }
                 }
 
                 let countyCreateObj = undefined;
                 if (!specialCourt) {
+                    console.log(`Not a special court ... creating county`);
                     countyCreateObj = await countyCreatedObj();
+                } else {
+                    console.log(`No county to create`);
+                    continue;
                 }
 
                 let existingCounty = {} as any;
                 let created = false as boolean;
 
                 if (!specialCourt && countyCreateObj) {
+                    console.log(`County created obj: ${JSON.stringify(countyCreateObj)}`);
                     existingCounty = countyCreateObj.existingCounty;
                     created = countyCreateObj.created;
 
                     if (created && existingCounty && existingCounty.get('id') !== undefined) {
                         console.log(`County ${county} created with ID : ${existingCounty.get('id')}`);
+                        returnVal = true;
                     } else if (!created && existingCounty && existingCounty.get('id') !== undefined) {
                         console.log(`County ${county} already exists with ID : ${existingCounty.get('id')}`);
+                        returnVal = true;
                     } else {
                         console.log(`Error: County ${county} not found or created.`);
+                        returnVal = false;
                     }
                 }
 
